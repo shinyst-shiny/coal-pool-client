@@ -26,7 +26,7 @@ pub async fn stake_balance(key: &Keypair, url: String, unsecure: bool) {
             if balance.contains("Failed to g") {
                 println!("  Staked Balance: No staked account");
             } else {
-                println!("  Staked Balance: {:.11} ORE", balance);
+                println!("  Staked Balance: {:.11} COAL", balance);
             }
         }
         Err(e) => {

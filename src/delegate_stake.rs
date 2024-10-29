@@ -10,7 +10,7 @@ use crate::balance::get_balance;
 
 #[derive(Debug, Parser)]
 pub struct StakeArgs {
-    #[arg(long, value_name = "AMOUNT", help = "Amount of ore to stake.")]
+    #[arg(long, value_name = "AMOUNT", help = "Amount of coal to stake.")]
     pub amount: f64,
 
     #[arg(
@@ -22,7 +22,7 @@ pub struct StakeArgs {
     pub auto: bool,
 }
 
-pub async fn delegate_stake(args: StakeArgs, key: Keypair, url: String, unsecure: bool) {
+/*pub async fn delegate_stake(args: StakeArgs, key: Keypair, url: String, unsecure: bool) {
     let base_url = url;
     let client = reqwest::Client::new();
     let url_prefix = if unsecure {
@@ -35,7 +35,7 @@ pub async fn delegate_stake(args: StakeArgs, key: Keypair, url: String, unsecure
     // Ensure stake amount does not exceed balance
     let stake_amount = if args.amount > balance {
         println!(
-            "  You do not have enough to stake {} ORE.\n  Adjusting stake amount to the maximum available: {} ORE",
+            "  You do not have enough to stake {} COAL.\n  Adjusting stake amount to the maximum available: {} COAL",
             args.amount, balance
         );
         balance
@@ -46,7 +46,7 @@ pub async fn delegate_stake(args: StakeArgs, key: Keypair, url: String, unsecure
     // RED TEXT
     match Text::new(
         &format!(
-            "  Are you sure you want to stake {} ORE? (Y/n or 'esc' to cancel)",
+            "  Are you sure you want to stake {} COAL? (Y/n or 'esc' to cancel)",
             stake_amount
         )
         .red()
@@ -141,9 +141,9 @@ pub async fn delegate_stake(args: StakeArgs, key: Keypair, url: String, unsecure
                             bincode::deserialize(&decoded_blockhash).unwrap();
 
                         let stake_amount_u64 = (stake_amount
-                            * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64))
+                            * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64))
                             as u64;
-                        let ix = ore_miner_delegation::instruction::delegate_stake(
+                        let ix = coal_miner_delegation::instruction::delegate_stake(
                             key.pubkey(),
                             pool_pubkey,
                             stake_amount_u64,
@@ -236,8 +236,8 @@ pub async fn delegate_stake(args: StakeArgs, key: Keypair, url: String, unsecure
     let deserialized_blockhash = bincode::deserialize(&decoded_blockhash).unwrap();
 
     let stake_amount_u64 =
-        (stake_amount * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
-    let ix = ore_miner_delegation::instruction::delegate_stake(
+        (stake_amount * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+    let ix = coal_miner_delegation::instruction::delegate_stake(
         key.pubkey(),
         pool_pubkey,
         stake_amount_u64,
@@ -303,4 +303,4 @@ async fn get_timestamp(client: &reqwest::Client, url_prefix: &str, base_url: &st
         println!("  Unable to retrieve timestamp, retrying in 3 seconds...");
         tokio::time::sleep(Duration::from_secs(3)).await;
     }
-}
+}*/

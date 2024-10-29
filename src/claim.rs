@@ -12,13 +12,13 @@ pub struct ClaimArgs {
         long,
         short('r'),
         value_name = "RECEIVER_PUBKEY",
-        help = "Wallet Public Key to receive the claimed Ore to."
+        help = "Wallet Public Key to receive the claimed Coal to."
     )]
     pub receiver_pubkey: Option<String>,
     #[arg(
         long,
         value_name = "AMOUNT",
-        help = "Amount of ore to claim. (Minimum of 0.005 ORE)"
+        help = "Amount of coal to claim. (Minimum of 0.005 COAL)"
     )]
     pub amount: Option<f64>,
     #[arg(
@@ -73,7 +73,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         parsed_balance
     } else {
         // If the wallet balance failed to parse
-        println!("\n  Note: A 0.004 ORE fee will be deducted from your claim amount to cover the cost\n  of Token Account Creation. This is a one time fee used to create the ORE Token Account.");
+        println!("\n  Note: A 0.004 COAL fee will be deducted from your claim amount to cover the cost\n  of Token Account Creation. This is a one time fee used to create the COAL Token Account.");
         0.0
     };
 
@@ -93,19 +93,19 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
 
     let rewards = rewards_response.parse::<f64>().unwrap_or(0.0);
 
-    println!("  Miner Unclaimed Rewards:      {:.11} ORE", rewards);
-    println!("  Receiving Wallet Ore Balance: {:.11} ORE", balance);
+    println!("  Miner Unclaimed Rewards:      {:.11} COAL", rewards);
+    println!("  Receiving Wallet Coal Balance: {:.11} COAL", balance);
 
     let minimum_claim_amount = 0.005;
     if rewards < minimum_claim_amount {
         println!();
-        println!("  You have not reached the required claim limit of 0.005 ORE.");
+        println!("  You have not reached the required claim limit of 0.005 COAL.");
         println!("  Keep mining to accumulate more rewards before you can withdraw.");
         return;
     }
 
     // Convert balance to grains
-    let balance_grains = (rewards * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
+    let balance_grains = (rewards * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
 
     // If balance is zero, inform the user and return to keypair selection
     if balance_grains == 0 {
@@ -123,7 +123,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
                 println!("  Please enter a number above 0.005.");
             }
 
-            match Text::new("\n  Enter the amount to claim (minimum 0.005 ORE or 'esc' to cancel):")
+            match Text::new("\n  Enter the amount to claim (minimum 0.005 COAL or 'esc' to cancel):")
                 .prompt()
             {
                 Ok(input) => {
@@ -156,18 +156,18 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
 
     // Convert the claim amount to the smallest unit
     let mut claim_amount_grains =
-        (claim_amount * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
+        (claim_amount * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
 
     // Auto-adjust the claim amount if it exceeds the available balance
     if claim_amount_grains > balance_grains {
         println!(
-            "  You do not have enough rewards to claim {} ORE.",
-            amount_to_ui_amount(claim_amount_grains, ore_api::consts::TOKEN_DECIMALS)
+            "  You do not have enough rewards to claim {} COAL.",
+            amount_to_ui_amount(claim_amount_grains, coal_api::consts::TOKEN_DECIMALS)
         );
         claim_amount_grains = balance_grains;
         println!(
-            "  Adjusting claim amount to the maximum available: {} ORE.",
-            amount_to_ui_amount(claim_amount_grains, ore_api::consts::TOKEN_DECIMALS)
+            "  Adjusting claim amount to the maximum available: {} COAL.",
+            amount_to_ui_amount(claim_amount_grains, coal_api::consts::TOKEN_DECIMALS)
         );
     }
 
@@ -175,8 +175,8 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     if !args.y {
         match Text::new(
             &format!(
-                "  Are you sure you want to claim {} ORE? (Y/n or 'esc' to cancel)",
-                amount_to_ui_amount(claim_amount_grains, ore_api::consts::TOKEN_DECIMALS)
+                "  Are you sure you want to claim {} COAL? (Y/n or 'esc' to cancel)",
+                amount_to_ui_amount(claim_amount_grains, coal_api::consts::TOKEN_DECIMALS)
             )
             .red()
             .to_string(),
@@ -226,8 +226,8 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     };
 
     println!(
-        "  Sending claim request for {} ORE...",
-        amount_to_ui_amount(claim_amount_grains, ore_api::consts::TOKEN_DECIMALS)
+        "  Sending claim request for {} COAL...",
+        amount_to_ui_amount(claim_amount_grains, coal_api::consts::TOKEN_DECIMALS)
     );
 
     let mut signed_msg = vec![];

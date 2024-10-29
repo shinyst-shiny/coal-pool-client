@@ -71,9 +71,9 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
     } else {
         stake_response.parse::<f64>().unwrap_or(0.0)
     };
-    println!("  Unclaimed Rewards: {:.11} ORE", rewards);
-    println!("  Wallet (Stakable): {:.11} ORE", balance);
-    println!("  Staked Balance:    {:.11} ORE", staked_balance);
+    println!("  Unclaimed Rewards: {:.11} COAL", rewards);
+    println!("  Wallet (Stakable): {:.11} COAL", balance);
+    println!("  Staked Balance:    {:.11} COAL", staked_balance);
 }
 
 pub async fn get_balance(key: &Keypair, url: String, unsecure: bool) -> f64 {

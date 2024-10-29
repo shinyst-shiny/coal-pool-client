@@ -32,7 +32,7 @@ mod earnings;
 
 const CONFIG_FILE: &str = "keypair_list";
 
-/// A command line interface tool for pooling power to submit hashes for proportional ORE rewards
+/// A command line interface tool for pooling power to submit hashes for proportional COAL rewards
 #[derive(Parser, Debug)]
 #[command(version, author, about, long_about = None)]
 struct Args {
@@ -40,7 +40,7 @@ struct Args {
         long,
         value_name = "SERVER_URL",
         help = "URL of the server to connect to",
-        default_value = "ec1ipse.me"
+        default_value = "127.0.0.1:3000"
     )]
     url: String,
 
@@ -82,14 +82,14 @@ enum Commands {
     Signup(SignupArgs),
     #[command(about = "Claim rewards.")]
     Claim(ClaimArgs),
-    #[command(about = "Display current ore token balance.")]
+    #[command(about = "Display current coal token balance.")]
     Balance,
-    #[command(about = "Delegate stake for the pool miner.")]
+    /*#[command(about = "Delegate stake for the pool miner.")]
     Stake(delegate_stake::StakeArgs),
     #[command(about = "Undelegate stake from the pool miner.")]
     Unstake(undelegate_stake::UnstakeArgs),
     #[command(about = "Delegated stake balance.")]
-    StakeBalance,
+    StakeBalance,*/
     #[command(about = "Generate a new solana keypair for mining.")]
     GenerateKeypair,
     #[command(about = "Displays locally tracked earnings.")]
@@ -103,7 +103,7 @@ async fn main() {
     // Ensure the URL is set to the default if not provided
     let mut args = args;
     if args.url.is_empty() {
-        args.url = "ec1ipse.me".to_string();
+        args.url = "127.0.0.1:3000".to_string();
     }
 
     // Does the config file exist? If not, create one
@@ -556,8 +556,8 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         "  Sign up",
         "  Claim Rewards",
         "  View Balances",
-        "  Stake",
-        "  Unstake",
+        //"  Stake",
+        //"  Unstake",
         "  Generate Keypair",
         "  Update Client",
         "  Exit",
@@ -578,7 +578,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         Some(_) => None,
         None => match Select::new(
             &format!(
-                "Welcome to Ec1ipse Ore HQ Client v{}, what would you like to do?",
+                "Welcome to Coal Pool Client v{}, what would you like to do?",
                 version
             ),
             options,
@@ -617,11 +617,11 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let base_url = if args.url == "ec1ipse.me" {
+    let base_url = if args.url == "127.0.0.1:3000" {
         let url_input = Text::new("  Please enter the server URL:")
-            .with_default("ec1ipse.me")
+            .with_default("127.0.0.1:3000")
             .prompt()
-            .unwrap_or_else(|_| "ec1ipse.me".to_string());
+            .unwrap_or_else(|_| "127.0.0.1:3000".to_string());
         url_input
     } else {
         args.url.clone()
@@ -675,7 +675,7 @@ async fn run_command(
         Some(Commands::Balance) => {
             balance(&key, base_url, unsecure_conn).await;
         }
-        Some(Commands::Stake(args)) => {
+        /*Some(Commands::Stake(args)) => {
             delegate_stake::delegate_stake(args, key, base_url, unsecure_conn).await;
         }
         Some(Commands::Unstake(args)) => {
@@ -683,7 +683,7 @@ async fn run_command(
         }
         Some(Commands::StakeBalance) => {
             stake_balance::stake_balance(&key, base_url, unsecure_conn).await;
-        }
+        }*/
         Some(Commands::GenerateKeypair) => {
             generate_key::generate_key();
         }
@@ -794,12 +794,12 @@ async fn run_command(
                         println!();
                         earnings::earnings(); // Display earnings after balance
                     }
-                    "  Stake" => {
+                    /*"  Stake" => {
                         balance(&key, base_url.clone(), unsecure_conn).await;
 
                         loop {
                             let stake_input = Text::new(
-                                "  Enter the amount of ore to stake (or 'esc' to cancel):",
+                                "  Enter the amount of coal to stake (or 'esc' to cancel):",
                             )
                             .prompt();
 
@@ -845,14 +845,14 @@ async fn run_command(
                                 }
                             }
                         }
-                    }
+                    }*/
 
-                    "  Unstake" => {
+                    /*"  Unstake" => {
                         stake_balance::stake_balance(&key, base_url.clone(), unsecure_conn).await;
 
                         loop {
                             let unstake_input = Text::new(
-                                "  Enter the amount of ore to unstake (or 'esc' to cancel):",
+                                "  Enter the amount of coal to unstake (or 'esc' to cancel):",
                             )
                             .prompt();
 
@@ -897,7 +897,7 @@ async fn run_command(
                                 }
                             }
                         }
-                    }
+                    }*/
                     _ => println!("  Unknown selection."),
                 }
             }
@@ -909,7 +909,7 @@ async fn run_command(
 
 async fn is_update_available() -> Result<bool, Box<dyn std::error::Error>> {
     let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let latest_version_str = get_latest_crate_version("ore-hq-client").await?;
+    let latest_version_str = get_latest_crate_version("coal-pool-client").await?;
     let latest_version = Version::parse(&latest_version_str)?;
 
     Ok(current_version < latest_version)
@@ -917,7 +917,7 @@ async fn is_update_available() -> Result<bool, Box<dyn std::error::Error>> {
 
 async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
     let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let latest_version_str = get_latest_crate_version("ore-hq-client").await?;
+    let latest_version_str = get_latest_crate_version("coal-pool-client").await?;
     let latest_version = Version::parse(&latest_version_str)?;
 
     if current_version < latest_version {
@@ -930,7 +930,7 @@ async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Updating to version {}...", latest_version);
             let status = Command::new("cargo")
                 .arg("install")
-                .arg("ore-hq-client")
+                .arg("coal-pool-client")
                 .status()?;
             if status.success() {
                 println!("  Update completed successfully.");
@@ -953,7 +953,7 @@ async fn get_latest_crate_version(crate_name: &str) -> Result<String, Box<dyn st
     let client = reqwest::Client::new();
     let resp = client
         .get(&url)
-        .header("User-Agent", "ore-hq-client")
+        .header("User-Agent", "coal-pool-client")
         .send()
         .await?;
         

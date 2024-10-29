@@ -10,11 +10,11 @@ use crate::stake_balance;
 
 #[derive(Debug, Parser)]
 pub struct UnstakeArgs {
-    #[arg(long, value_name = "AMOUNT", help = "Amount of ore to unstake.")]
+    #[arg(long, value_name = "AMOUNT", help = "Amount of coal to unstake.")]
     pub amount: f64,
 }
 
-pub async fn undelegate_stake(args: UnstakeArgs, key: &Keypair, url: String, unsecure: bool) {
+/*pub async fn undelegate_stake(args: UnstakeArgs, key: &Keypair, url: String, unsecure: bool) {
     let base_url = url;
     let client = reqwest::Client::new();
     let url_prefix = if unsecure {
@@ -25,12 +25,12 @@ pub async fn undelegate_stake(args: UnstakeArgs, key: &Keypair, url: String, uns
 
     // Fetch the staked balance
     let staked_balance = stake_balance::get_staked_balance(&key, base_url.clone(), unsecure).await;
-    println!("  Current Staked Balance: {:.11} ORE", staked_balance);
+    println!("  Current Staked Balance: {:.11} COAL", staked_balance);
 
     // Ensure unstake amount does not exceed staked balance
     let unstake_amount = if args.amount > staked_balance {
         println!(
-            "  Unstake amount exceeds staked balance. Defaulting to maximum available: {:.11} ORE",
+            "  Unstake amount exceeds staked balance. Defaulting to maximum available: {:.11} COAL",
             staked_balance
         );
         staked_balance
@@ -41,7 +41,7 @@ pub async fn undelegate_stake(args: UnstakeArgs, key: &Keypair, url: String, uns
     // Add confirmation step with red text before unstaking
     match Text::new(
         &format!(
-            "  Are you sure you want to unstake {} ORE? (Y/n or 'esc' to cancel)",
+            "  Are you sure you want to unstake {} COAL? (Y/n or 'esc' to cancel)",
             unstake_amount
         )
         .red()
@@ -108,11 +108,11 @@ pub async fn undelegate_stake(args: UnstakeArgs, key: &Keypair, url: String, uns
     let decoded_blockhash = BASE64_STANDARD.decode(resp).unwrap();
     let deserialized_blockhash = bincode::deserialize(&decoded_blockhash).unwrap();
 
-    let ata_address = get_associated_token_address(&key.pubkey(), &ore_api::consts::MINT_ADDRESS);
+    let ata_address = get_associated_token_address(&key.pubkey(), &coal_api::consts::COAL_MINT_ADDRESS);
 
     let unstake_amount_u64 =
-        (unstake_amount * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
-    let ix = ore_miner_delegation::instruction::undelegate_stake(
+        (unstake_amount * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+    let ix = coal_miner_delegation::instruction::undelegate_stake(
         key.pubkey(),
         pool_pubkey,
         ata_address,
@@ -152,4 +152,4 @@ pub async fn undelegate_stake(args: UnstakeArgs, key: &Keypair, url: String, uns
     } else {
         println!("  Transaction failed, please wait and try again.");
     }
-}
+}*/

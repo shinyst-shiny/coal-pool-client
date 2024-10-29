@@ -380,8 +380,8 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
 
                     while let Some(msg) = db_receiver.recv().await {
                         app_db.add_new_pool_submission(msg);
-                        let total_earnings = amount_to_ui_amount(app_db.get_todays_earnings(), ore_api::consts::TOKEN_DECIMALS);
-                        println!("Todays Earnings: {} ORE\n", total_earnings);
+                        let total_earnings = amount_to_ui_amount(app_db.get_todays_earnings(), coal_api::consts::TOKEN_DECIMALS);
+                        println!("Todays Earnings: {} COAL\n", total_earnings);
                     }
                 });
 
@@ -575,8 +575,8 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     }
                                 },
                                 ServerMessage::PoolSubmissionResult(data) => {
-                                    let pool_earned = (data.total_rewards * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
-                                    let miner_earned = (data.miner_earned_rewards * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
+                                    let pool_earned = (data.total_rewards * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+                                    let miner_earned = (data.miner_earned_rewards * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
                                     let ps = PoolSubmissionResult::new(
                                         data.difficulty,
                                         pool_earned,
@@ -587,7 +587,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     let _ = db_sender.send(ps);
 
                                     let message = format!(
-                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\nPool Earned:  {:.11} ORE\nPool Balance: {:.11} ORE\nTop Stake:    {:.11} ORE\nPool Multiplier: {:.2}x\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} ORE\n{:.2}% of total pool reward\n",
+                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\nPool Earned:  {:.11} COAL\nPool Balance: {:.11} COAL\nTop Stake:    {:.11} COAL\nPool Multiplier: {:.2}x\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} COAL\n{:.2}% of total pool reward\n",
                                         BASE64_STANDARD.encode(data.challenge),
                                         data.difficulty,
                                         data.total_rewards,
