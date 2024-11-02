@@ -18,7 +18,7 @@ pub struct ClaimArgs {
     #[arg(
         long,
         value_name = "AMOUNT",
-        help = "Amount of coal to claim. (Minimum of 0.1 COAL)"
+        help = "Amount of coal to claim. (Minimum of 1 COAL)"
     )]
     pub amount: Option<f64>,
     #[arg(
@@ -96,10 +96,10 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     println!("  Miner Unclaimed Rewards:      {:.11} COAL", rewards);
     println!("  Receiving Wallet Coal Balance: {:.11} COAL", balance);
 
-    let minimum_claim_amount = 0.1;
+    let minimum_claim_amount = 1.0;
     if rewards < minimum_claim_amount {
         println!();
-        println!("  You have not reached the required claim limit of 0.1 COAL.");
+        println!("  You have not reached the required claim limit of 1 COAL.");
         println!("  Keep mining to accumulate more rewards before you can withdraw.");
         return;
     }
@@ -115,12 +115,12 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
 
     let mut claim_amount = args.amount.unwrap_or(rewards);
 
-    // Prompt the user for an amount if it's not provided or less than 0.1
+    // Prompt the user for an amount if it's not provided or less than 1
     loop {
         if claim_amount < minimum_claim_amount {
             if claim_amount != 0.0 {
                 // Only show the message if they previously entered an invalid value
-                println!("  Please enter a number above 0.1.");
+                println!("  Please enter a number above 1.");
             }
 
             match Text::new("\n  Enter the amount to claim (minimum 0.1 COAL or 'esc' to cancel):")
