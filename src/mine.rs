@@ -1,3 +1,4 @@
+use colored::*;
 use base64::prelude::*;
 use clap::{arg, Parser};
 use drillx_2::equix;
@@ -215,6 +216,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
     let key = Arc::new(key);
 
     loop {
+        let connection_started=Instant::now();
         if !running.load(Ordering::SeqCst) {
             break;
         }
@@ -290,6 +292,11 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
 
         match connect_async(request).await {
             Ok((ws_stream, _)) => {
+                println!("{}{}{}",
+                         "Server: ".dimmed(),
+                         format!("Connected to network!").blue(),
+                         format!(" [{}ms]", connection_started.elapsed().as_millis()).dimmed(),
+                );
                 println!("Connected to network!");
 
                 let (sender, mut receiver) = ws_stream.split();
@@ -435,6 +442,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     pb.enable_steady_tick(Duration::from_millis(120));
 
                                     // Original mining code
+                                    let stop = Arc::new(AtomicBool::new(false));
                                     let hash_timer = Instant::now();
                                     let core_ids = core_affinity::get_core_ids().unwrap();
                                     let nonces_per_thread = 10_000;
@@ -443,6 +451,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                         .map(|i| {
                                             let running = running.clone(); // Capture running in thread
                                             let system_submission_sender = system_submission_sender.clone();
+                                            let stop_me = stop.clone();
                                             std::thread::spawn({
                                                 let mut memory = equix::SolverMemory::new();
                                                 move || {
@@ -466,6 +475,10 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                                             return None;
                                                         }
 
+                                                        if stop_me.load(Ordering::Relaxed) {
+                                                            break;
+                                                        }
+
                                                         // Create hash
                                                         for hx in drillx_2::get_hashes_with_memory(
                                                             &mut memory,
@@ -481,7 +494,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                                                         d: hx.d,
                                                                 };
                                                                 if let Err(_) = system_submission_sender.send(MessageSubmissionSystem::Submission(thread_submission)) {
-                                                                        println!("Failed to send found hash to internal submission system");
+                                                                    stop_me.store(true, Ordering::Relaxed);
                                                                 }
                                                                 best_nonce = nonce;
                                                                 best_difficulty = difficulty;
@@ -536,6 +549,11 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
 
                                     // Stop the spinner after mining is done
                                     pb.finish_and_clear();
+
+                                    if stop.load(Ordering::Relaxed) {
+                                        return;
+                                    }
+
                                     println!("✔ Mining complete!");
                                     println!("Processed: {}", total_nonces_checked);
                                     println!("Hash time: {:?}", hash_time);
