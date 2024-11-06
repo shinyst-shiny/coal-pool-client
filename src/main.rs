@@ -1,22 +1,22 @@
-use balance::balance; 
+use balance::balance;
 use claim::ClaimArgs;
 use clap::{Parser, Subcommand};
+use core_affinity::get_core_ids;
 use dirs::home_dir;
+use generate_key::generate_key;
 use inquire::{Confirm, Select, Text};
 use mine::{mine, MineArgs};
 use protomine::{protomine, MineArgs as ProtoMineArgs};
+use semver::Version;
+use serde_json;
 use signup::{signup, SignupArgs};
+use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::read_keypair_file;
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
-use core_affinity::get_core_ids;
-use generate_key::generate_key;
-use solana_sdk::pubkey::Pubkey;
-use std::str::FromStr;
-use semver::Version;
-use serde_json;
 use std::process::Command;
+use std::str::FromStr;
 
 mod balance;
 mod claim;
@@ -29,6 +29,7 @@ mod undelegate_stake;
 mod generate_key;
 mod database;
 mod earnings;
+mod guild;
 
 const CONFIG_FILE: &str = "keypair_list";
 
@@ -78,8 +79,12 @@ enum Commands {
     Mine(MineArgs),
     #[command(about = "Connect to pool and start mining using Prototype Software.")]
     Protomine(ProtoMineArgs),
-    #[command(about = "Transfer SOL to the pool authority to sign up.")]
+    #[command(about = "Sign up to mine with the pool.")]
     Signup(SignupArgs),
+    #[command(about = "Join the pool guild.")]
+    JoinGuild,
+    #[command(about = "Stake LP tokens to the pool guild.")]
+    StakeToGuild,
     #[command(about = "Claim rewards.")]
     Claim(ClaimArgs),
     #[command(about = "Display current coal token balance.")]
@@ -208,20 +213,20 @@ fn get_keypair_path(default_keypair: &str) -> Option<String> {
 
     if !default_keypair_exists && !hot_wallet_exists && keypair_paths.is_empty() {
         println!("  No keypairs found and no id.json or mining-hot-wallet.json file exists.");
-    
+
         // Prompt the user if they want to generate a new keypair
         let generate_new_keypair = Confirm::new("  Would you like to generate a new keypair?")
             .with_default(true)
             .prompt()
             .unwrap_or(false);
-    
+
         if generate_new_keypair {
             generate_key();
             println!("  Keypair generated successfully. Exiting program.");
         } else {
             println!("  Exiting program without generating a keypair.");
         }
-    
+
         std::process::exit(0);
     }
     if default_keypair_exists && !seen_paths.contains(&solana_default_keypair) {
@@ -246,7 +251,7 @@ fn get_keypair_path(default_keypair: &str) -> Option<String> {
             "  Select a keypair to use or manage:",
             keypair_paths.clone(),
         )
-        .prompt()
+            .prompt()
         {
             Ok(s) => s,
             Err(inquire::error::InquireError::OperationCanceled) => {
@@ -447,7 +452,7 @@ fn ask_for_custom_keypair() -> Option<String> {
                 "  Select a keypair to use from the directory:",
                 keypair_files.clone(),
             )
-            .prompt()
+                .prompt()
             {
                 Ok(s) => s,
                 Err(inquire::error::InquireError::OperationCanceled) => {
@@ -481,9 +486,9 @@ fn ask_for_custom_keypair() -> Option<String> {
             let add_to_list = Confirm::new(
                 "  Would you like to add this keypair path to the configuration file?",
             )
-            .with_default(true)
-            .prompt()
-            .unwrap_or(true);
+                .with_default(true)
+                .prompt()
+                .unwrap_or(true);
 
             if add_to_list {
                 let config_path = PathBuf::from(CONFIG_FILE);
@@ -583,9 +588,9 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
             ),
             options,
         )
-        .with_page_size(9) // Adjusted page size after adding an option
-        .with_vim_mode(vim_mode)
-        .prompt()
+            .with_page_size(9) // Adjusted page size after adding an option
+            .with_vim_mode(vim_mode)
+            .prompt()
         {
             Ok(s) => Some(s),
             Err(inquire::error::InquireError::OperationCanceled) => {
@@ -618,7 +623,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let base_url = if args.url == "pool.coal-pool.xyz" {
-        let url_input = Text::new("  Please enter the server URL:")
+        let url_input = Text::new("  Please enter the server URL, just press Enter to use the default:")
             .with_default("pool.coal-pool.xyz")
             .prompt()
             .unwrap_or_else(|_| "pool.coal-pool.xyz".to_string());
@@ -648,7 +653,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         unsecure_conn,
         selection.as_deref(),
     )
-    .await?;
+        .await?;
     Ok(())
 }
 
@@ -690,6 +695,12 @@ async fn run_command(
         Some(Commands::Earnings) => {
             earnings::earnings();
         }
+        Some(Commands::JoinGuild) => {
+            guild::join_guild(base_url, unsecure_conn).await;
+        }
+        Some(Commands::StakeToGuild) => {
+            guild::stake_to_guild(base_url, unsecure_conn).await;
+        }
         None => {
             if let Some(choice) = selection {
                 match choice {
@@ -702,8 +713,8 @@ async fn run_command(
                             let input = Text::new(&format!(
                                 "  Enter the number of threads (default: {}):", max_threads
                             ))
-                            .with_default(&max_threads.to_string())
-                            .prompt()?;
+                                .with_default(&max_threads.to_string())
+                                .prompt()?;
 
                             match input.trim().parse::<u32>() {
                                 Ok(valid_threads) if valid_threads > 0 && valid_threads <= max_threads as u32 => break valid_threads,
@@ -956,7 +967,7 @@ async fn get_latest_crate_version(crate_name: &str) -> Result<String, Box<dyn st
         .header("User-Agent", "coal-pool-client")
         .send()
         .await?;
-        
+
     if resp.status().is_success() {
         let json: serde_json::Value = resp.json().await?;
         if let Some(version) = json["crate"]["max_version"].as_str() {
