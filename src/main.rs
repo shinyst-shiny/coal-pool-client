@@ -804,8 +804,23 @@ async fn run_command(
                         earnings::earnings(); // Display earnings after balance
                     }
                     "  Stake to Guild" => {
+                        let token_selection = "COAL-SOL".to_string();
                         let lp_address = "F6LXJ8CptcmrofbszVHBRsBvVTX2rNWwFbjCARZukzNS".to_string();
-                        get_token_balance(&key, base_url.clone(), unsecure_conn, lp_address.clone()).await;
+                        let token_balance = get_token_balance(&key, base_url.clone(), unsecure_conn, lp_address.clone()).await;
+
+                        println!(
+                            "  Current balance for {}: {}",
+                            token_selection, token_balance
+                        );
+
+                        // If the balance is 0, display a message and exit
+                        if token_balance == 0.0 {
+                            println!(
+                                "  You cannot stake because your {} balance is 0.",
+                                token_selection
+                            );
+                            std::process::exit(0);
+                        }
 
                         loop {
                             let stake_input = Text::new(
