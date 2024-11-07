@@ -93,7 +93,7 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
         .get(format!(
             "{}://{}/guild/addresses",
             url_prefix,
-            url
+            base_url
         ))
         .send()
         .await
@@ -110,7 +110,7 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
         .get(format!(
             "{}://{}/guild/check-member?pubkey={}",
             url_prefix,
-            url,
+            base_url,
             key.pubkey().to_string()
         ))
         .send()

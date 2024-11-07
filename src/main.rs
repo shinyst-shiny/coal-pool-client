@@ -1,3 +1,4 @@
+use crate::balance::get_token_balance;
 use crate::delegate_stake_guild::StakeToGuildArgs;
 use balance::balance;
 use claim::ClaimArgs;
@@ -562,6 +563,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         "  View Balances",
         //"  Stake",
         //"  Unstake",
+        "  Stake to Guild",
         "  Generate Keypair",
         "  Update Client",
         "  Exit",
@@ -800,6 +802,59 @@ async fn run_command(
                         balance(&key, base_url.clone(), unsecure_conn).await;
                         println!();
                         earnings::earnings(); // Display earnings after balance
+                    }
+                    "  Stake to Guild" => {
+                        let lp_address = "F6LXJ8CptcmrofbszVHBRsBvVTX2rNWwFbjCARZukzNS".to_string();
+                        get_token_balance(&key, base_url.clone(), unsecure_conn, lp_address.clone()).await;
+
+                        loop {
+                            let stake_input = Text::new(
+                                "  Enter the amount of LP to stake (or 'esc' to cancel):",
+                            )
+                                .prompt();
+
+                            match stake_input {
+                                Ok(input) => {
+                                    let input = input.trim();
+                                    if input.eq_ignore_ascii_case("esc") {
+                                        println!("  Staking operation canceled.");
+                                        break;
+                                    }
+
+                                    match input.parse::<f64>() {
+                                        Ok(stake_amount) if stake_amount > 0.0 => {
+                                            let args = StakeToGuildArgs {
+                                                amount: stake_amount,
+                                                mint: lp_address.clone(), // Auto-staking by default
+                                            };
+                                            delegate_stake_guild::stake_to_guild(
+                                                args,
+                                                key,
+                                                base_url.clone(),
+                                                unsecure_conn,
+                                            )
+                                                .await;
+                                            break;
+                                        }
+                                        Ok(_) => {
+                                            println!(
+                                                "  Please enter a valid number greater than 0."
+                                            );
+                                        }
+                                        Err(_) => {
+                                            println!("  Please enter a valid number.");
+                                        }
+                                    }
+                                }
+                                Err(inquire::error::InquireError::OperationCanceled) => {
+                                    println!("  Staking operation canceled.");
+                                    break;
+                                }
+                                Err(_) => {
+                                    println!("  Invalid input. Please try again.");
+                                }
+                            }
+                        }
                     }
                     /*"  Stake" => {
                         balance(&key, base_url.clone(), unsecure_conn).await;
