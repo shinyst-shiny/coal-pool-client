@@ -14,14 +14,6 @@ pub struct StakeToGuildArgs {
 
     #[arg(long, value_name = "MINT", help = "Mint of LP.")]
     pub mint: String,
-
-    #[arg(
-        long,
-        short,
-        action,
-        help = "Auto stake input amount when staking window opens."
-    )]
-    pub auto: bool,
 }
 
 pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, unsecure: bool) {
