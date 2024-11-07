@@ -1,12 +1,13 @@
 use crate::balance::get_token_balance;
 use base64::{prelude::BASE64_STANDARD, Engine};
 use clap::Parser;
-use coal_guilds_api::sdk::new_member;
 use colored::*;
 use inquire::{InquireError, Text};
+use serde::{Deserialize, Serialize};
 use solana_sdk::instruction::Instruction;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer, transaction::Transaction};
 use std::str::FromStr;
+
 #[derive(Debug, Parser)]
 pub struct StakeToGuildArgs {
     #[arg(long, value_name = "AMOUNT", help = "Amount of LP to stake.")]
@@ -14,6 +15,12 @@ pub struct StakeToGuildArgs {
 
     #[arg(long, value_name = "MINT", help = "Mint of LP.")]
     pub mint: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PoolGuild {
+    pub pubkey: String,
+    pub authority: String,
 }
 
 pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, unsecure: bool) {
@@ -84,17 +91,16 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
 
     let resp = client
         .get(format!(
-            "{}://{}/guild/address",
+            "{}://{}/guild/addresses",
             url_prefix,
             url
         ))
         .send()
         .await
-        .unwrap()
-        .text()
-        .await
         .unwrap();
-    let guild_pubkey = Pubkey::from_str(&resp).unwrap();
+    let guild: PoolGuild = resp.json().await.unwrap();
+    let guild_pubkey = Pubkey::from_str(&guild.pubkey).unwrap();
+    let guild_authority = Pubkey::from_str(&guild.authority).unwrap();
 
     // we have all the basic info, let's start building the transaction
     let mut ixs: Vec<Instruction> = vec![];
@@ -112,7 +118,7 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     {
         // the pubkey is not part of the guild, let's add it
         ixs.extend([
-            new_member(key.pubkey())
+            coal_guilds_api::sdk::join(key.pubkey(), guild_pubkey, guild_authority)
         ]);
     }
 
