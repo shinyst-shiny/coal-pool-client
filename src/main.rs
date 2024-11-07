@@ -1,3 +1,4 @@
+use crate::delegate_stake_guild::StakeToGuildArgs;
 use balance::balance;
 use claim::ClaimArgs;
 use clap::{Parser, Subcommand};
@@ -29,7 +30,7 @@ mod undelegate_stake;
 mod generate_key;
 mod database;
 mod earnings;
-mod guild;
+mod delegate_stake_guild;
 
 const CONFIG_FILE: &str = "keypair_list";
 
@@ -81,10 +82,8 @@ enum Commands {
     Protomine(ProtoMineArgs),
     #[command(about = "Sign up to mine with the pool.")]
     Signup(SignupArgs),
-    #[command(about = "Join the pool guild.")]
-    JoinGuild,
-    #[command(about = "Stake LP tokens to the pool guild.")]
-    StakeToGuild,
+    #[command(about = "Join the guild in inactive mode and stake LP tokens to the pool guild.")]
+    StakeToGuild(StakeToGuildArgs),
     #[command(about = "Claim rewards.")]
     Claim(ClaimArgs),
     #[command(about = "Display current coal token balance.")]
@@ -695,11 +694,8 @@ async fn run_command(
         Some(Commands::Earnings) => {
             earnings::earnings();
         }
-        Some(Commands::JoinGuild) => {
-            guild::join_guild(base_url, unsecure_conn).await;
-        }
-        Some(Commands::StakeToGuild) => {
-            guild::stake_to_guild(base_url, unsecure_conn).await;
+        Some(Commands::StakeToGuild(args)) => {
+            delegate_stake_guild::stake_to_guild(args, key, base_url, unsecure_conn).await;
         }
         None => {
             if let Some(choice) = selection {
