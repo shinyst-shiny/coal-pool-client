@@ -106,7 +106,7 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     let mut ixs: Vec<Instruction> = vec![];
 
     // check if the pubkey is of a member of the guild
-    if let Err(_) = client
+    if let Err(err) = client
         .get(format!(
             "{}://{}/guild/check-member?pubkey={}",
             url_prefix,
@@ -116,11 +116,33 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
         .send()
         .await
     {
-        // the pubkey is not part of the guild, let's add it
-        ixs.extend([
-            coal_guilds_api::sdk::join(key.pubkey(), guild_pubkey, guild_authority)
-        ]);
+        match err.status() {
+            Some(status_code) => {
+                match status_code {
+                    reqwest::StatusCode::NOT_FOUND => {
+                        println!("  The public key is not part of the guild, adding it!");
+                        ixs.extend([
+                            coal_guilds_api::sdk::join(key.pubkey(), guild_pubkey, guild_authority)
+                        ]);
+                    }
+                    reqwest::StatusCode::BAD_REQUEST => {
+                        println!("  Impossible to add the user to the pool guild. Error: {}", err);
+                        return;
+                    }
+                    _ => {
+                        println!("  Unknown status code: {}", status_code);
+                        return;
+                    }
+                }
+            }
+            None => {
+                println!("  Unknown error: {}", err);
+                return;
+            }
+        }
     }
+
+    print!("  Public key setup for staking {} LP token to the guild.", guild_stake_amount);
 
     let guild_stake_amount_u64 =
         (guild_stake_amount * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
