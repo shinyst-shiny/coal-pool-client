@@ -43,7 +43,7 @@ struct Args {
         long,
         value_name = "SERVER_URL",
         help = "URL of the server to connect to",
-        default_value = "pool.coal-pool.xyz"
+        default_value = "127.0.0.1:3000"
     )]
     url: String,
 
@@ -108,7 +108,7 @@ async fn main() {
     // Ensure the URL is set to the default if not provided
     let mut args = args;
     if args.url.is_empty() {
-        args.url = "pool.coal-pool.xyz".to_string();
+        args.url = "127.0.0.1:3000".to_string();
     }
 
     // Does the config file exist? If not, create one
@@ -623,11 +623,11 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let base_url = if args.url == "pool.coal-pool.xyz" {
+    let base_url = if args.url == "127.0.0.1:3000" {
         let url_input = Text::new("  Please enter the server URL, just press Enter to use the default:")
-            .with_default("pool.coal-pool.xyz")
+            .with_default("127.0.0.1:3000")
             .prompt()
-            .unwrap_or_else(|_| "pool.coal-pool.xyz".to_string());
+            .unwrap_or_else(|_| "127.0.0.1:3000".to_string());
         url_input
     } else {
         args.url.clone()
@@ -651,7 +651,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         args.command,
         key,
         base_url,
-        unsecure_conn,
+        true,
         selection.as_deref(),
     )
         .await?;
@@ -805,7 +805,7 @@ async fn run_command(
                     }
                     "  Stake to Guild" => {
                         let token_selection = "COAL-SOL".to_string();
-                        let lp_address = "F6LXJ8CptcmrofbszVHBRsBvVTX2rNWwFbjCARZukzNS".to_string();
+                        let lp_address = "AtDMJwa4j5w2nKTnzWrxkHHwqfsEvLniErVDcgNNeSft".to_string();
                         let token_balance = get_token_balance(&key, base_url.clone(), unsecure_conn, lp_address.clone()).await;
 
                         println!(
