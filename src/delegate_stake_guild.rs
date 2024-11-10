@@ -4,6 +4,7 @@ use clap::Parser;
 use colored::*;
 use inquire::{InquireError, Text};
 use serde::{Deserialize, Serialize};
+use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::Instruction;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer, transaction::Transaction};
 use std::str::FromStr;
@@ -104,9 +105,13 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     // we have all the basic info, let's start building the transaction
     let mut ixs: Vec<Instruction> = vec![];
 
+    let cu_limit_ix =
+        ComputeBudgetInstruction::set_compute_unit_limit(5_000_000);
+    ixs.push(cu_limit_ix);
+
     // Set priority fee rate (e.g., 5000 lamports per compute unit)
-    //let priority_fee_instruction = ComputeBudgetInstruction::set_compute_unit_price(5000);
-    //ixs.push(priority_fee_instruction);
+    let priority_fee_instruction = ComputeBudgetInstruction::set_compute_unit_price(5000);
+    ixs.push(priority_fee_instruction);
 
     // check if the pubkey is of a member of the guild
     if let Ok(err) = client
