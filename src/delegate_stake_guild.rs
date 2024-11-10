@@ -4,7 +4,6 @@ use clap::Parser;
 use colored::*;
 use inquire::{InquireError, Text};
 use serde::{Deserialize, Serialize};
-use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::Instruction;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer, transaction::Transaction};
 use std::str::FromStr;
@@ -105,14 +104,6 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     // we have all the basic info, let's start building the transaction
     let mut ixs: Vec<Instruction> = vec![];
 
-    let cu_limit_ix =
-        ComputeBudgetInstruction::set_compute_unit_limit(5_000_000);
-    ixs.push(cu_limit_ix);
-
-    // Set priority fee rate (e.g., 5000 lamports per compute unit)
-    let priority_fee_instruction = ComputeBudgetInstruction::set_compute_unit_price(5000);
-    ixs.push(priority_fee_instruction);
-
     // check if the pubkey is of a member of the guild
     if let Ok(err) = client
         .get(format!(
@@ -126,17 +117,23 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     {
         match err.status() {
             reqwest::StatusCode::NOT_FOUND => {
-                println!("  The public key is not initialized for guilds yet, adding to the process!");
+                println!("  The public key is not initialized for guilds yet, adding to the process");
                 ixs.extend([
-                    coal_guilds_api::sdk::new_member(key.pubkey())
+                    coal_guilds_api::sdk::new_member(key.pubkey()),
+                    coal_guilds_api::sdk::delegate(key.pubkey(), guild_pubkey)
                 ]);
             }
-            reqwest::StatusCode::BAD_REQUEST => {
-                println!("  Impossible to add the user to the pool guild.");
-                return;
+            reqwest::StatusCode::OK => {
+                println!("  The public key is not in any guild, adding the delegation process");
+                ixs.extend([
+                    coal_guilds_api::sdk::delegate(key.pubkey(), guild_pubkey)
+                ]);
+            }
+            reqwest::StatusCode::FOUND => {
+                println!("  The public key is is already in the guild");
             }
             _ => {
-                println!("  Unknown status code");
+                println!("  Impossible to add the user to the pool guild. Error: {}", err.text().await.unwrap());
                 return;
             }
         }
@@ -150,7 +147,6 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     // now we add the actual stake instruction
     ixs.extend([
         coal_guilds_api::sdk::stake(key.pubkey(), guild_pubkey, guild_stake_amount_u64),
-        coal_guilds_api::sdk::delegate(key.pubkey(), guild_pubkey)
     ]);
 
     let resp = client
@@ -164,12 +160,7 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     let decoded_blockhash = BASE64_STANDARD.decode(resp).unwrap();
     let deserialized_blockhash = bincode::deserialize(&decoded_blockhash).unwrap();
 
-    println!("Fee payer: {:?}", fee_pubkey);
-
     let mut tx = Transaction::new_with_payer(&ixs, Some(&fee_pubkey));
-
-    println!("TX instructions: {}", tx.message.instructions.len());
-    println!("The tx is: {:?}", tx);
 
     tx.partial_sign(&[&key], deserialized_blockhash);
     let serialized_tx = bincode::serialize(&tx).unwrap();
