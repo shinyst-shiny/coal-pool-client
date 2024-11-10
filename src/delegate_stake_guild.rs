@@ -100,7 +100,6 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
         .unwrap();
     let guild: PoolGuild = resp.json().await.unwrap();
     let guild_pubkey = Pubkey::from_str(&guild.pubkey).unwrap();
-    let guild_authority = Pubkey::from_str(&guild.authority).unwrap();
 
     // we have all the basic info, let's start building the transaction
     let mut ixs: Vec<Instruction> = vec![];
@@ -120,9 +119,9 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
             Some(status_code) => {
                 match status_code {
                     reqwest::StatusCode::NOT_FOUND => {
-                        println!("  The public key is not part of the guild, adding it!");
+                        println!("  The public key is not initialized for guilds yet, adding to the process!");
                         ixs.extend([
-                            coal_guilds_api::sdk::join(key.pubkey(), guild_pubkey, guild_authority)
+                            coal_guilds_api::sdk::initialize(key.pubkey())
                         ]);
                     }
                     reqwest::StatusCode::BAD_REQUEST => {
@@ -149,7 +148,8 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
 
     // now we add the actual stake instruction
     ixs.extend([
-        coal_guilds_api::sdk::stake(key.pubkey(), guild_pubkey, guild_stake_amount_u64)
+        coal_guilds_api::sdk::stake(key.pubkey(), guild_pubkey, guild_stake_amount_u64),
+        coal_guilds_api::sdk::delegate(key.pubkey(), guild_pubkey)
     ]);
 
     let resp = client
