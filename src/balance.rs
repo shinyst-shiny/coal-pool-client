@@ -1,5 +1,16 @@
+use serde::Deserialize;
 use solana_sdk::{signature::Keypair, signer::Signer};
 
+#[derive(Deserialize)]
+pub struct MinerRewards {
+    pub coal: f64,
+    pub ore: f64,
+}
+#[derive(Deserialize)]
+pub struct MinerBalance {
+    pub coal: String,
+    pub ore: String,
+}
 pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
     let base_url = url;
     let client = reqwest::Client::new();
@@ -22,15 +33,9 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
         ))
         .send()
         .await
-        .unwrap()
-        .text()
-        .await
         .unwrap();
 
-    let balance = match balance_response.parse::<f64>() {
-        Ok(b) => b,
-        Err(_) => 0.0,
-    };
+    let balance: MinerBalance = balance_response.json().await.unwrap();
 
     // Fetch Unclaimed Rewards
     let rewards_response = client
@@ -42,40 +47,14 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
         ))
         .send()
         .await
-        .unwrap()
-        .text()
-        .await
         .unwrap();
 
-    let rewards = match rewards_response.parse::<f64>() {
-        Ok(r) => r,
-        Err(_) => 0.0,
-    };
+    let rewards: MinerRewards = rewards_response.json().await.unwrap();
 
-    // Fetch Staked Balance
-    let stake_response = client
-        .get(format!(
-            "{}://{}/miner/stake?pubkey={}",
-            url_prefix,
-            base_url,
-            key.pubkey().to_string()
-        ))
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
-
-    let staked_balance = if stake_response.contains("Failed to g") {
-        println!("  Delegated stake balance: No staked account");
-        0.0
-    } else {
-        stake_response.parse::<f64>().unwrap_or(0.0)
-    };
-    println!("  Unclaimed Rewards: {:.11} COAL", rewards);
-    println!("  Wallet (Stakable): {:.11} COAL", balance);
-    println!("  Staked Balance:    {:.11} COAL", staked_balance);
+    println!("  Unclaimed Rewards: {:.11} COAL", rewards.coal);
+    println!("  Wallet:            {:.11} COAL", balance.coal);
+    println!("  Unclaimed Rewards: {:.11} ORE", rewards.ore);
+    println!("  Wallet:            {:.11} ORE", balance.ore);
 }
 
 pub async fn get_balance(key: &Keypair, url: String, unsecure: bool) -> f64 {

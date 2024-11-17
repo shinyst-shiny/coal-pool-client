@@ -43,7 +43,7 @@ struct Args {
         long,
         value_name = "SERVER_URL",
         help = "URL of the server to connect to",
-        default_value = "pool.coal-pool.xyz"
+        default_value = "localhost:3000"
     )]
     url: String,
 
@@ -108,7 +108,7 @@ async fn main() {
     // Ensure the URL is set to the default if not provided
     let mut args = args;
     if args.url.is_empty() {
-        args.url = "pool.coal-pool.xyz".to_string();
+        args.url = "localhost:3000".to_string();
     }
 
     // Does the config file exist? If not, create one
@@ -623,17 +623,17 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let base_url = if args.url == "pool.coal-pool.xyz" {
+    let base_url = if args.url == "localhost:3000" {
         let url_input = Text::new("  Please enter the server URL, just press Enter to use the default:")
-            .with_default("pool.coal-pool.xyz")
+            .with_default("localhost:3000")
             .prompt()
-            .unwrap_or_else(|_| "pool.coal-pool.xyz".to_string());
+            .unwrap_or_else(|_| "localhost:3000".to_string());
         url_input
     } else {
         args.url.clone()
     };
 
-    let unsecure_conn = args.use_http;
+    let unsecure_conn = true;
 
     let keypair_path = loop {
         match get_keypair_path(&args.keypair) {
