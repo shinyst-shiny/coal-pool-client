@@ -1,4 +1,4 @@
-use crate::balance::MinerRewards;
+use crate::balance::{MinerBalance, MinerRewards};
 use base64::{prelude::BASE64_STANDARD, Engine};
 use clap::Parser;
 use colored::*;
@@ -67,18 +67,15 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         .await
         .unwrap();
 
-    let balance: crate::balance::MinerBalance = balance_response.json().await.unwrap();
+    let mut balance: MinerBalance = MinerBalance { coal: "0".to_string(), ore: "0".to_string() };
+    match balance_response.json::<MinerBalance>().await {
+        Ok(balance_resp) => {
+            balance = balance_resp;
+        }
+        Err(_) => {}
+    }
 
     println!("\n  Note: If you don't have a COAL token account or an ORE token account\n  A 4 COAL and/or a 0.02 ORE fee will be deducted from your claim amount to cover the cost of Token Account Creation.\n  This is a one time fee used to create the COAL and/or ORE Token Account.\n");
-
-
-    /*let balance = if let Ok(parsed_balance) = balance_response.parse::<f64>() {
-        parsed_balance
-    } else {
-        // If the wallet balance failed to parse
-        println!("\n  Note: A 4 COAL and a 0.02 ORE fee will be deducted from your claim amount to cover the cost\n  of Token Account Creation. This is a one time fee used to create the COAL Token Account.");
-        0.0
-    };*/
 
     let rewards_response = client
         .get(format!(
@@ -91,7 +88,13 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         .await
         .unwrap();
 
-    let rewards: MinerRewards = rewards_response.json().await.unwrap();
+    let mut rewards: MinerRewards = MinerRewards { coal: 0.0, ore: 0.0 };
+    match rewards_response.json::<MinerRewards>().await {
+        Ok(rewards_resp) => {
+            rewards = rewards_resp;
+        }
+        Err(_) => {}
+    }
 
     println!("  Miner Unclaimed Rewards:       {:.11} COAL", rewards.coal);
     println!("  Miner Unclaimed Rewards:       {:.11} ORE", rewards.ore);

@@ -35,7 +35,13 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
         .await
         .unwrap();
 
-    let balance: MinerBalance = balance_response.json().await.unwrap();
+    let mut balance: MinerBalance = MinerBalance { coal: "0".to_string(), ore: "0".to_string() };
+    match balance_response.json::<MinerBalance>().await {
+        Ok(balance_resp) => {
+            balance = balance_resp;
+        }
+        Err(_) => {}
+    }
 
     // Fetch Unclaimed Rewards
     let rewards_response = client
@@ -49,7 +55,13 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
         .await
         .unwrap();
 
-    let rewards: MinerRewards = rewards_response.json().await.unwrap();
+    let mut rewards: MinerRewards = MinerRewards { coal: 0.0, ore: 0.0 };
+    match rewards_response.json::<MinerRewards>().await {
+        Ok(rewards_resp) => {
+            rewards = rewards_resp;
+        }
+        Err(_) => {}
+    }
 
     println!("  Unclaimed Rewards: {:.11} COAL", rewards.coal);
     println!("  Wallet:            {:.11} COAL", balance.coal);

@@ -687,7 +687,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     let _ = db_sender.send(ps);
 
                                     let message = format!(
-                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\n\nPool Earned:      {:.11} COAL\nPool Balance:     {:.11} COAL\nPool Multiplier:  {:.2}x\nGuild Stake:      {:.11} LP\nGuild Multiplier: {:.2}\nTool Multiplier:  {:.2}x\n\nPool Earned:      {:.11} ORE\nPool Balance:     {:.11} ORE\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} COAL\n{:.2}% of total pool reward\nMiner Earned: {:.11} ORE\n{:.2}% of total pool reward\n",
+                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\n\nPool Earned:      {:.11} COAL\nPool Balance:     {:.11} COAL\nPool Multiplier:  {:.2}x\nGuild Stake:      {:.11} LP\nGuild Multiplier: {:.2}x\nTool Multiplier:  {:.2}x\n\nPool Earned:      {:.11} ORE\nPool Balance:     {:.11} ORE\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} COAL\n{:.2}% of total pool reward\nMiner Earned: {:.11} ORE\n{:.2}% of total pool reward\n",
                                         BASE64_STANDARD.encode(data.challenge),
                                         data.difficulty,
                                         data.total_rewards_coal,
