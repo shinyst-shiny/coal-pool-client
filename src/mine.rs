@@ -576,6 +576,7 @@ fn process_message(
         }
         Message::Binary(b) => {
             let message_type = b[0];
+            println!("Found message code ---> {}", message_type);
             match message_type {
                 0 => {
                     if b.len() < 49 {
@@ -618,7 +619,7 @@ fn process_message(
                     }
                 }
                 1 => {
-                    let msg = match bincode::deserialize(&b) {
+                    let msg = match bincode::deserialize(&b[1..]) {
                         Ok(value) => value,
                         Err(err) => {
                             // Handle the error, e.g., log it and return an error
