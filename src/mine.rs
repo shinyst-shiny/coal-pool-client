@@ -576,7 +576,6 @@ fn process_message(
         }
         Message::Binary(b) => {
             let message_type = b[0];
-            println!("Found message code ---> {}", message_type);
             match message_type {
                 0 => {
                     if b.len() < 49 {
