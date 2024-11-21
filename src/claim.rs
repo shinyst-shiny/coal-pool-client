@@ -67,7 +67,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         .await
         .unwrap();
 
-    let mut balance: MinerBalance = MinerBalance { coal: "0".to_string(), ore: "0".to_string() };
+    let mut balance: MinerBalance = MinerBalance { coal: 0.0, ore: 0.0 };
     match balance_response.json::<MinerBalance>().await {
         Ok(balance_resp) => {
             balance = balance_resp;
