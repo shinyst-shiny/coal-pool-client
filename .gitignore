@@ -1,5 +1,5 @@
 /target
-app_db.db3
+app_db*.db3
 keypair_list
 return
 .idea

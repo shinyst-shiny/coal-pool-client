@@ -5,10 +5,10 @@ use drillx_2::equix;
 use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
+use serde::Deserialize;
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_token::amount_to_ui_amount;
 use std::env;
-use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{
     ops::{ControlFlow, Range},
@@ -30,167 +30,50 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use crate::database::{AppDatabase, PoolSubmissionResult};
 
-#[derive(Debug)]
-pub struct ServerMessagePoolSubmissionResult {
-    difficulty: u32,
-    total_balance: f64,
-    total_rewards: f64,
-    top_stake: f64,
-    multiplier: f64,
-    active_miners: u32,
-    challenge: [u8; 32],
-    best_nonce: u64,
-    miner_supplied_difficulty: u32,
-    miner_earned_rewards: f64,
-    miner_percentage: f64,
-    guild_total_stake: u64,
-    guild_multiplier: f64,
+#[derive(Deserialize, Debug)]
+pub struct RewardDetails {
+    pub total_balance: f64,
+    pub total_rewards: f64,
+    pub miner_supplied_difficulty: u32,
+    pub miner_earned_rewards: f64,
+    pub miner_percentage: f64,
 }
 
-impl ServerMessagePoolSubmissionResult {
-    pub fn new_from_bytes(b: Vec<u8>) -> Self {
-        let mut b_index = 1;
+#[derive(Deserialize, Debug)]
+pub struct CoalDetails {
+    pub reward_details: RewardDetails,
+    pub top_stake: f64,
+    pub stake_multiplier: f64,
+    pub guild_total_stake: f64,
+    pub guild_multiplier: f64,
+    pub tool_multiplier: f64,
+}
 
-        let data_size = size_of::<u32>();
-        let mut data_bytes = [0u8; size_of::<u32>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let difficulty = u32::from_le_bytes(data_bytes);
+#[derive(Deserialize, Debug)]
+pub struct OreBoost {
+    pub top_stake: f64,
+    pub total_stake: f64,
+    pub stake_multiplier: f64,
+    pub mint_address: [u8; 32],
+    pub name: String,
+}
 
-        let data_size = size_of::<f64>();
-        let mut data_bytes = [0u8; size_of::<f64>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let total_balance = f64::from_le_bytes(data_bytes);
+#[derive(Deserialize, Debug)]
+pub struct OreDetails {
+    pub reward_details: RewardDetails,
+    pub top_stake: f64,
+    pub stake_multiplier: f64,
+    pub ore_boosts: Vec<OreBoost>,
+}
 
-        let data_size = size_of::<f64>();
-        let mut data_bytes = [0u8; size_of::<f64>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let total_rewards = f64::from_le_bytes(data_bytes);
-
-        let data_size = size_of::<f64>();
-        let mut data_bytes = [0u8; size_of::<f64>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let top_stake = f64::from_le_bytes(data_bytes);
-
-        let data_size = size_of::<f64>();
-        let mut data_bytes = [0u8; size_of::<f64>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let multiplier = f64::from_le_bytes(data_bytes);
-
-        let data_size = size_of::<u32>();
-        let mut data_bytes = [0u8; size_of::<u32>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let active_miners = u32::from_le_bytes(data_bytes);
-
-        let data_size = 32;
-        let mut data_bytes = [0u8; 32];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let challenge = data_bytes.clone();
-
-        let data_size = size_of::<u64>();
-        let mut data_bytes = [0u8; size_of::<u64>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let best_nonce = u64::from_le_bytes(data_bytes);
-
-        let data_size = size_of::<u32>();
-        let mut data_bytes = [0u8; size_of::<u32>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let miner_supplied_difficulty = u32::from_le_bytes(data_bytes);
-
-        let data_size = size_of::<f64>();
-        let mut data_bytes = [0u8; size_of::<f64>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let miner_earned_rewards = f64::from_le_bytes(data_bytes);
-
-        let data_size = size_of::<f64>();
-        let mut data_bytes = [0u8; size_of::<f64>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let miner_percentage = f64::from_le_bytes(data_bytes);
-
-        let data_size = size_of::<u64>();
-        let mut data_bytes = [0u8; size_of::<u64>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let guild_total_stake = u64::from_le_bytes(data_bytes);
-
-        let data_size = size_of::<f64>();
-        let mut data_bytes = [0u8; size_of::<f64>()];
-        for i in 0..data_size {
-            data_bytes[i] = b[i + b_index];
-        }
-        b_index += data_size;
-        let guild_multiplier = f64::from_le_bytes(data_bytes);
-
-        ServerMessagePoolSubmissionResult {
-            difficulty,
-            total_balance,
-            total_rewards,
-            top_stake,
-            multiplier,
-            active_miners,
-            challenge,
-            best_nonce,
-            miner_supplied_difficulty,
-            miner_earned_rewards,
-            miner_percentage,
-            guild_total_stake,
-            guild_multiplier,
-        }
-    }
-
-    pub fn to_message_binary(&self) -> Vec<u8> {
-        let mut bin_data = Vec::new();
-        bin_data.push(1u8);
-        bin_data.extend_from_slice(&self.difficulty.to_le_bytes());
-        bin_data.extend_from_slice(&self.total_balance.to_le_bytes());
-        bin_data.extend_from_slice(&self.total_rewards.to_le_bytes());
-        bin_data.extend_from_slice(&self.top_stake.to_le_bytes());
-        bin_data.extend_from_slice(&self.multiplier.to_le_bytes());
-        bin_data.extend_from_slice(&self.active_miners.to_le_bytes());
-        bin_data.extend_from_slice(&self.challenge);
-        bin_data.extend_from_slice(&self.best_nonce.to_le_bytes());
-        bin_data.extend_from_slice(&self.miner_supplied_difficulty.to_le_bytes());
-        bin_data.extend_from_slice(&self.miner_earned_rewards.to_le_bytes());
-        bin_data.extend_from_slice(&self.miner_percentage.to_le_bytes());
-        bin_data.extend_from_slice(&self.guild_total_stake.to_le_bytes());
-        bin_data.extend_from_slice(&self.guild_multiplier.to_le_bytes());
-
-        bin_data
-    }
+#[derive(Deserialize, Debug)]
+pub struct ServerMessagePoolSubmissionResult {
+    pub difficulty: u32,
+    pub challenge: [u8; 32],
+    pub best_nonce: u64,
+    pub active_miners: u32,
+    pub coal_details: CoalDetails,
+    pub ore_details: OreDetails,
 }
 
 
@@ -408,8 +291,9 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
 
                     while let Some(msg) = db_receiver.recv().await {
                         app_db.add_new_pool_submission(msg);
-                        let total_earnings = amount_to_ui_amount(app_db.get_todays_earnings(), coal_api::consts::TOKEN_DECIMALS);
-                        println!("Todays Earnings: {} COAL\n", total_earnings);
+                        let total_earnings_coal = amount_to_ui_amount(app_db.get_todays_earnings_coal(), coal_api::consts::TOKEN_DECIMALS);
+                        let total_earnings_ore = amount_to_ui_amount(app_db.get_todays_earnings_ore(), ore_api::consts::TOKEN_DECIMALS);
+                        println!("Today's Earnings: {} COAL, {} ORE", total_earnings_coal, total_earnings_ore);
                     }
                 });
 
@@ -614,32 +498,40 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     }
                                 }
                                 ServerMessage::PoolSubmissionResult(data) => {
-                                    print!("Test: {:?} - {:?}", data.guild_total_stake, data.guild_multiplier);
-                                    let pool_earned = (data.total_rewards * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
-                                    let miner_earned = (data.miner_earned_rewards * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+                                    let pool_earned_coal = (data.coal_details.reward_details.total_rewards * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+                                    let miner_earned_coal = (data.coal_details.reward_details.miner_earned_rewards * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+                                    let pool_earned_ore = (data.ore_details.reward_details.total_rewards * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
+                                    let miner_earned_ore = (data.ore_details.reward_details.miner_earned_rewards * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
                                     let ps = PoolSubmissionResult::new(
                                         data.difficulty,
-                                        pool_earned,
-                                        data.miner_percentage,
-                                        data.miner_supplied_difficulty,
-                                        miner_earned,
+                                        pool_earned_coal,
+                                        pool_earned_ore,
+                                        data.coal_details.reward_details.miner_percentage,
+                                        data.ore_details.reward_details.miner_percentage,
+                                        data.coal_details.reward_details.miner_supplied_difficulty,
+                                        miner_earned_coal,
+                                        miner_earned_ore,
                                     );
                                     let _ = db_sender.send(ps);
 
                                     let message = format!(
-                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\nPool Earned:      {:.11} COAL\nPool Balance:     {:.11} COAL\nTop Stake:        {:.11} COAL\nPool Multiplier:  {:.2}x\nGuild Stake:      {:.11} LP\nGuild Multiplier: {:.2}x\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} COAL\n{:.2}% of total pool reward\n",
+                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\n\nPool Earned:      {:.11} COAL\nPool Balance:     {:.11} COAL\nPool Multiplier:  {:.2}x\nGuild Stake:      {:.11} LP\nGuild Multiplier: {:.2}x\nTool Multiplier:  {:.2}x\n\nPool Earned:      {:.11} ORE\nPool Balance:     {:.11} ORE\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} COAL\n{:.2}% of total pool reward\nMiner Earned: {:.11} ORE\n{:.2}% of total pool reward\n",
                                         BASE64_STANDARD.encode(data.challenge),
                                         data.difficulty,
-                                        data.total_rewards,
-                                        data.total_balance,
-                                        data.top_stake,
-                                        data.multiplier,
-                                        amount_to_ui_amount(data.guild_total_stake, coal_api::consts::TOKEN_DECIMALS),
-                                        data.guild_multiplier,
+                                        data.coal_details.reward_details.total_rewards,
+                                        data.coal_details.reward_details.total_balance,
+                                        data.coal_details.stake_multiplier,
+                                        data.coal_details.guild_total_stake / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64),
+                                        data.coal_details.guild_multiplier,
+                                        data.coal_details.tool_multiplier,
+                                        data.ore_details.reward_details.total_rewards,
+                                        data.ore_details.reward_details.total_balance,
                                         data.active_miners,
-                                        data.miner_supplied_difficulty,
-                                        data.miner_earned_rewards,
-                                        data.miner_percentage
+                                        data.coal_details.reward_details.miner_supplied_difficulty,
+                                        data.coal_details.reward_details.miner_earned_rewards,
+                                        data.coal_details.reward_details.miner_percentage,
+                                        data.ore_details.reward_details.miner_earned_rewards,
+                                        data.ore_details.reward_details.miner_percentage
                                     );
                                     println!("{}", message);
                                 }
@@ -726,8 +618,15 @@ fn process_message(
                     }
                 }
                 1 => {
-                    let msg = ServerMessage::PoolSubmissionResult(ServerMessagePoolSubmissionResult::new_from_bytes(b));
-                    let _ = message_channel.send(msg);
+                    let msg = match bincode::deserialize(&b[1..]) {
+                        Ok(value) => value,
+                        Err(err) => {
+                            // Handle the error, e.g., log it and return an error
+                            eprintln!("Error deserializing: {}", err);
+                            return ControlFlow::Break(());
+                        }
+                    };
+                    let _ = message_channel.send(ServerMessage::PoolSubmissionResult(msg));
                 }
                 _ => {
                     println!("Failed to parse server message type");
