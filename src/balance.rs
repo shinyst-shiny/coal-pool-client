@@ -5,11 +5,13 @@ use solana_sdk::{signature::Keypair, signer::Signer};
 pub struct MinerRewards {
     pub coal: f64,
     pub ore: f64,
+    pub chromium: f64,
 }
 #[derive(Deserialize)]
 pub struct MinerBalance {
     pub coal: f64,
     pub ore: f64,
+    pub chromium: f64,
 }
 pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
     let base_url = url;
@@ -35,7 +37,11 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
         .await
         .unwrap();
 
-    let mut balance: MinerBalance = MinerBalance { coal: 0.0, ore: 0.0 };
+    let mut balance: MinerBalance = MinerBalance {
+        coal: 0.0,
+        ore: 0.0,
+        chromium: 0.0,
+    };
     match balance_response.json::<MinerBalance>().await {
         Ok(balance_resp) => {
             balance = balance_resp;
@@ -55,7 +61,11 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
         .await
         .unwrap();
 
-    let mut rewards: MinerRewards = MinerRewards { coal: 0.0, ore: 0.0 };
+    let mut rewards: MinerRewards = MinerRewards {
+        coal: 0.0,
+        ore: 0.0,
+        chromium: 0.0,
+    };
     match rewards_response.json::<MinerRewards>().await {
         Ok(rewards_resp) => {
             rewards = rewards_resp;
@@ -67,6 +77,8 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
     println!("  Wallet:            {:.11} COAL", balance.coal);
     println!("  Unclaimed Rewards: {:.11} ORE", rewards.ore);
     println!("  Wallet:            {:.11} ORE", balance.ore);
+    println!("  Unclaimed Rewards: {:.11} CHROMIUM", rewards.chromium);
+    println!("  Wallet:            {:.11} CHROMIUM", balance.chromium);
 }
 
 pub async fn get_balance(key: &Keypair, url: String, unsecure: bool) -> f64 {

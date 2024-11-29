@@ -6,6 +6,7 @@ use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::Deserialize;
+use solana_sdk::pubkey::Pubkey;
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_token::amount_to_ui_amount;
 use std::env;
@@ -67,6 +68,15 @@ pub struct OreDetails {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct MinerDetails {
+    pub total_chromium: f64,
+    pub total_coal: f64,
+    pub total_ore: f64,
+    pub guild_address: [u8; 32],
+    pub miner_address: [u8; 32],
+}
+
+#[derive(Deserialize, Debug)]
 pub struct ServerMessagePoolSubmissionResult {
     pub difficulty: u32,
     pub challenge: [u8; 32],
@@ -74,8 +84,8 @@ pub struct ServerMessagePoolSubmissionResult {
     pub active_miners: u32,
     pub coal_details: CoalDetails,
     pub ore_details: OreDetails,
+    pub miner_details: MinerDetails,
 }
-
 
 #[derive(Debug)]
 pub enum ServerMessage {
@@ -140,7 +150,11 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
             "https".to_string()
         };
 
-        let timestamp = match client.get(format!("{}://{}/timestamp", http_prefix, base_url)).send().await {
+        let timestamp = match client
+            .get(format!("{}://{}/timestamp", http_prefix, base_url))
+            .send()
+            .await
+        {
             Ok(res) => {
                 if res.status().as_u16() >= 200 && res.status().as_u16() < 300 {
                     if let Ok(ts) = res.text().await {
@@ -157,7 +171,10 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                         continue;
                     }
                 } else {
-                    println!("Failed to get timestamp from server. StatusCode: {}", res.status());
+                    println!(
+                        "Failed to get timestamp from server. StatusCode: {}",
+                        res.status()
+                    );
                     tokio::time::sleep(Duration::from_secs(5)).await;
                     continue;
                 }
@@ -196,17 +213,17 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
 
         match connect_async(request).await {
             Ok((ws_stream, _)) => {
-                println!("{}{}{}",
-                         "Server: ".dimmed(),
-                         format!("Connected to network!").blue(),
-                         format!(" [{}ms]", connection_started.elapsed().as_millis()).dimmed(),
+                println!(
+                    "{}{}{}",
+                    "Server: ".dimmed(),
+                    format!("Connected to network!").blue(),
+                    format!(" [{}ms]", connection_started.elapsed().as_millis()).dimmed(),
                 );
                 println!("Connected to network!");
 
                 let (sender, mut receiver) = ws_stream.split();
                 let (message_sender, mut message_receiver) =
                     tokio::sync::mpsc::unbounded_channel::<ServerMessage>();
-
 
                 let (solution_system_message_sender, solution_system_message_receiver) =
                     tokio::sync::mpsc::unbounded_channel::<MessageSubmissionSystem>();
@@ -215,7 +232,8 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                 let app_key = key.clone();
                 let app_socket_sender = sender.clone();
                 tokio::spawn(async move {
-                    submission_system(app_key, solution_system_message_receiver, app_socket_sender).await;
+                    submission_system(app_key, solution_system_message_receiver, app_socket_sender)
+                        .await;
                 });
 
                 let solution_system_submission_sender = Arc::new(solution_system_message_sender);
@@ -291,9 +309,18 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
 
                     while let Some(msg) = db_receiver.recv().await {
                         app_db.add_new_pool_submission(msg);
-                        let total_earnings_coal = amount_to_ui_amount(app_db.get_todays_earnings_coal(), coal_api::consts::TOKEN_DECIMALS);
-                        let total_earnings_ore = amount_to_ui_amount(app_db.get_todays_earnings_ore(), ore_api::consts::TOKEN_DECIMALS);
-                        println!("Today's Earnings: {} COAL, {} ORE", total_earnings_coal, total_earnings_ore);
+                        let total_earnings_coal = amount_to_ui_amount(
+                            app_db.get_todays_earnings_coal(),
+                            coal_api::consts::TOKEN_DECIMALS,
+                        );
+                        let total_earnings_ore = amount_to_ui_amount(
+                            app_db.get_todays_earnings_ore(),
+                            ore_api::consts::TOKEN_DECIMALS,
+                        );
+                        println!(
+                            "Today's Earnings: {} COAL, {} ORE",
+                            total_earnings_coal, total_earnings_ore
+                        );
                     }
                 });
 
@@ -313,8 +340,14 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
 
                             match msg {
                                 ServerMessage::StartMining(challenge, nonce_range, cutoff) => {
-                                    println!("\nNext Challenge: {}", BASE64_STANDARD.encode(challenge));
-                                    println!("Nonce range: {} - {}", nonce_range.start, nonce_range.end);
+                                    println!(
+                                        "\nNext Challenge: {}",
+                                        BASE64_STANDARD.encode(challenge)
+                                    );
+                                    println!(
+                                        "Nonce range: {} - {}",
+                                        nonce_range.start, nonce_range.end
+                                    );
                                     println!("Cutoff in: {}s", cutoff);
 
                                     // Adjust the cutoff with the buffer
@@ -335,7 +368,8 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                         ProgressBar::new_spinner().with_style(
                                             ProgressStyle::default_spinner()
                                                 .tick_strings(&[
-                                                    "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏",
+                                                    "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇",
+                                                    "⠏",
                                                 ])
                                                 .template("{spinner:.red} {msg}")
                                                 .expect("Failed to set progress bar template"),
@@ -440,8 +474,12 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     let mut best_difficulty = 0;
                                     let mut total_nonces_checked = 0;
                                     for h in handles {
-                                        if let Ok(Some((_nonce, difficulty, _hash, nonces_checked))) =
-                                            h.join()
+                                        if let Ok(Some((
+                                            _nonce,
+                                            difficulty,
+                                            _hash,
+                                            nonces_checked,
+                                        ))) = h.join()
                                         {
                                             total_nonces_checked += nonces_checked;
                                             if difficulty > best_difficulty {
@@ -471,7 +509,8 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                         println!("Client found diff: {}", best_difficulty);
                                     }
 
-                                    let _ = system_submission_sender.send(MessageSubmissionSystem::Reset);
+                                    let _ = system_submission_sender
+                                        .send(MessageSubmissionSystem::Reset);
 
                                     //tokio::time::sleep(Duration::from_secs(5 + args.buffer as u64)).await;
 
@@ -482,7 +521,8 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                         .as_secs();
 
                                     let msg = now.to_le_bytes();
-                                    let sig = key.sign_message(&msg).to_string().as_bytes().to_vec();
+                                    let sig =
+                                        key.sign_message(&msg).to_string().as_bytes().to_vec();
                                     let mut bin_data: Vec<u8> = Vec::new();
                                     bin_data.push(0u8);
                                     bin_data.extend_from_slice(&key.pubkey().to_bytes());
@@ -490,18 +530,46 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     bin_data.extend(sig);
                                     {
                                         let mut message_sender = message_sender.lock().await;
-                                        if let Err(_) = message_sender.send(Message::Binary(bin_data)).await {
-                                            let _ = system_submission_sender.send(MessageSubmissionSystem::Finish);
+                                        if let Err(_) =
+                                            message_sender.send(Message::Binary(bin_data)).await
+                                        {
+                                            let _ = system_submission_sender
+                                                .send(MessageSubmissionSystem::Finish);
                                             println!("Failed to send Ready message. Returning...");
                                             return;
                                         }
                                     }
                                 }
                                 ServerMessage::PoolSubmissionResult(data) => {
-                                    let pool_earned_coal = (data.coal_details.reward_details.total_rewards * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
-                                    let miner_earned_coal = (data.coal_details.reward_details.miner_earned_rewards * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
-                                    let pool_earned_ore = (data.ore_details.reward_details.total_rewards * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
-                                    let miner_earned_ore = (data.ore_details.reward_details.miner_earned_rewards * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
+                                    let pool_earned_coal =
+                                        (data.coal_details.reward_details.total_rewards
+                                            * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64))
+                                            as u64;
+                                    let miner_earned_coal =
+                                        (data.coal_details.reward_details.miner_earned_rewards
+                                            * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64))
+                                            as u64;
+                                    let pool_earned_ore =
+                                        (data.ore_details.reward_details.total_rewards
+                                            * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64))
+                                            as u64;
+                                    let miner_earned_ore =
+                                        (data.ore_details.reward_details.miner_earned_rewards
+                                            * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64))
+                                            as u64;
+                                    let miner_total_coal = data.miner_details.total_coal
+                                        / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64);
+                                    let miner_total_ore = data.miner_details.total_ore
+                                        / 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64);
+                                    let miner_total_chromium = data.miner_details.total_chromium
+                                        / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64);
+
+                                    let pool_guild =
+                                        Pubkey::from(data.miner_details.guild_address).to_string();
+
+                                    let miner_address =
+                                        Pubkey::from(data.miner_details.miner_address).to_string();
+
                                     let ps = PoolSubmissionResult::new(
                                         data.difficulty,
                                         pool_earned_coal,
@@ -515,18 +583,53 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     let _ = db_sender.send(ps);
 
                                     let message = format!(
-                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\n\nPool Earned:      {:.11} COAL\nPool Balance:     {:.11} COAL\nPool Multiplier:  {:.2}x\nGuild Stake:      {:.11} LP\nGuild Multiplier: {:.2}x\nTool Multiplier:  {:.2}x\n\nPool Earned:      {:.11} ORE\nPool Balance:     {:.11} ORE\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} COAL\n{:.2}% of total pool reward\nMiner Earned: {:.11} ORE\n{:.2}% of total pool reward\n",
+                                        "\n\
+                                        \n----------------------\
+                                        \nMINER INFO\
+                                        \nMiner Address: {}\
+                                        \nMiner Balance: {:.11} COAL / {:.11} ORE / {:.11} CHROMIUM\
+                                        \n----------------------\
+                                        \nPOOL INFO\
+                                        \nChallenge: {}\
+                                        \nPool Submitted Difficulty: {}\
+                                        \nPool Earned: {:.11} COAL / {:.11} ORE\
+                                        \nPool Balance: {:.11} COAL / {:.11} ORE\
+                                        \nGuild Address: {}\
+                                        \nGuild Stake: {:.11} LP\
+                                        \nActive Miners: {}\
+                                        \n----------------------\
+                                        \nCOAL MULTIPLIERS\
+                                        \nStake: {:.2}x\
+                                        \nTool Multiplier: {:.2}x\
+                                        \nGuild Multiplier: {:.2}x\
+                                        \nTotal multiplier for each miner: {:.2}x\
+                                        \n----------------------\
+                                        \nMINER REWARDS\
+                                        \nMiner Submitted Difficulty: {}\
+                                        \nMiner Earned: {:.11} COAL\
+                                        \n{:.2}% of total pool reward\
+                                        \nMiner Earned: {:.11} ORE\
+                                        \n{:.2}% of total pool reward\n",
+                                        miner_address,
+                                        miner_total_coal,
+                                        miner_total_ore,
+                                        miner_total_chromium,
                                         BASE64_STANDARD.encode(data.challenge),
                                         data.difficulty,
                                         data.coal_details.reward_details.total_rewards,
-                                        data.coal_details.reward_details.total_balance,
-                                        data.coal_details.stake_multiplier,
-                                        data.coal_details.guild_total_stake / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64),
-                                        data.coal_details.guild_multiplier,
-                                        data.coal_details.tool_multiplier,
                                         data.ore_details.reward_details.total_rewards,
+                                        data.coal_details.reward_details.total_balance,
                                         data.ore_details.reward_details.total_balance,
+                                        pool_guild,
+                                        data.coal_details.guild_total_stake
+                                            / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64),
                                         data.active_miners,
+                                        data.coal_details.stake_multiplier,
+                                        data.coal_details.tool_multiplier,
+                                        data.coal_details.guild_multiplier,
+                                        data.coal_details.stake_multiplier
+                                            * data.coal_details.tool_multiplier
+                                            * data.coal_details.guild_multiplier,
                                         data.coal_details.reward_details.miner_supplied_difficulty,
                                         data.coal_details.reward_details.miner_earned_rewards,
                                         data.coal_details.reward_details.miner_percentage,
@@ -645,7 +748,11 @@ fn process_message(
     ControlFlow::Continue(got_start_mining_message)
 }
 
-async fn submission_system(key: Arc<Keypair>, mut system_message_receiver: UnboundedReceiver<MessageSubmissionSystem>, socket_sender: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>) {
+async fn submission_system(
+    key: Arc<Keypair>,
+    mut system_message_receiver: UnboundedReceiver<MessageSubmissionSystem>,
+    socket_sender: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>,
+) {
     let mut best_diff = 0;
     while let Some(msg) = system_message_receiver.recv().await {
         match msg {
