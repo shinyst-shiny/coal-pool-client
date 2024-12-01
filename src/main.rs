@@ -25,15 +25,12 @@ use std::str::FromStr;
 mod balance;
 mod claim;
 mod database;
-mod delegate_stake;
 mod delegate_stake_guild;
 mod earnings;
 mod generate_key;
 mod mine;
 mod protomine;
 mod signup;
-mod stake_balance;
-mod undelegate_stake;
 mod undelegate_stake_guild;
 
 const CONFIG_FILE: &str = "keypair_list";
@@ -46,7 +43,7 @@ struct Args {
         long,
         value_name = "SERVER_URL",
         help = "URL of the server to connect to",
-        default_value = "pool.coal-pool.xyz"
+        default_value = "localhost:3000"
     )]
     url: String,
 
@@ -108,7 +105,7 @@ async fn main() {
     // Ensure the URL is set to the default if not provided
     let mut args = args;
     if args.url.is_empty() {
-        args.url = "pool.coal-pool.xyz".to_string();
+        args.url = "localhost:3000".to_string();
     }
 
     // Does the config file exist? If not, create one
@@ -564,8 +561,6 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         "  Sign up",
         "  Claim Rewards",
         "  View Balances",
-        //"  Stake",
-        //"  Unstake",
         "  Stake to Guild",
         "  UnStake from Guild",
         "  Generate Keypair",
@@ -627,18 +622,18 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let base_url = if args.url == "pool.coal-pool.xyz" {
+    let base_url = if args.url == "localhost:3000" {
         let url_input =
             Text::new("  Please enter the server URL, just press Enter to use the default:")
-                .with_default("pool.coal-pool.xyz")
+                .with_default("localhost:3000")
                 .prompt()
-                .unwrap_or_else(|_| "pool.coal-pool.xyz".to_string());
+                .unwrap_or_else(|_| "localhost:3000".to_string());
         url_input
     } else {
         args.url.clone()
     };
 
-    let unsecure_conn = args.use_http;
+    let unsecure_conn = true;
 
     let keypair_path = loop {
         match get_keypair_path(&args.keypair) {
@@ -686,15 +681,6 @@ async fn run_command(
         Some(Commands::Balance) => {
             balance(&key, base_url, unsecure_conn).await;
         }
-        /*Some(Commands::Stake(args)) => {
-            delegate_stake::delegate_stake(args, key, base_url, unsecure_conn).await;
-        }
-        Some(Commands::Unstake(args)) => {
-            undelegate_stake::undelegate_stake(args, &key, base_url, unsecure_conn).await;
-        }
-        Some(Commands::StakeBalance) => {
-            stake_balance::stake_balance(&key, base_url, unsecure_conn).await;
-        }*/
         Some(Commands::GenerateKeypair) => {
             generate_key::generate_key();
         }
@@ -977,110 +963,6 @@ async fn run_command(
                             }
                         }
                     }
-                    /*"  Stake" => {
-                        balance(&key, base_url.clone(), unsecure_conn).await;
-
-                        loop {
-                            let stake_input = Text::new(
-                                "  Enter the amount of coal to stake (or 'esc' to cancel):",
-                            )
-                            .prompt();
-
-                            match stake_input {
-                                Ok(input) => {
-                                    let input = input.trim();
-                                    if input.eq_ignore_ascii_case("esc") {
-                                        println!("  Staking operation canceled.");
-                                        break;
-                                    }
-
-                                    match input.parse::<f64>() {
-                                        Ok(stake_amount) if stake_amount > 0.0 => {
-                                            let args = delegate_stake::StakeArgs {
-                                                amount: stake_amount,
-                                                auto: true, // Auto-staking by default
-                                            };
-                                            delegate_stake::delegate_stake(
-                                                args,
-                                                key,
-                                                base_url.clone(),
-                                                unsecure_conn,
-                                            )
-                                            .await;
-                                            break;
-                                        }
-                                        Ok(_) => {
-                                            println!(
-                                                "  Please enter a valid number greater than 0."
-                                            );
-                                        }
-                                        Err(_) => {
-                                            println!("  Please enter a valid number.");
-                                        }
-                                    }
-                                }
-                                Err(inquire::error::InquireError::OperationCanceled) => {
-                                    println!("  Staking operation canceled.");
-                                    break;
-                                }
-                                Err(_) => {
-                                    println!("  Invalid input. Please try again.");
-                                }
-                            }
-                        }
-                    }*/
-
-                    /*"  Unstake" => {
-                        stake_balance::stake_balance(&key, base_url.clone(), unsecure_conn).await;
-
-                        loop {
-                            let unstake_input = Text::new(
-                                "  Enter the amount of coal to unstake (or 'esc' to cancel):",
-                            )
-                            .prompt();
-
-                            match unstake_input {
-                                Ok(input) => {
-                                    let input = input.trim();
-                                    if input.eq_ignore_ascii_case("esc") {
-                                        println!("  Unstaking operation canceled.");
-                                        break;
-                                    }
-
-                                    match input.parse::<f64>() {
-                                        Ok(unstake_amount) if unstake_amount > 0.0 => {
-                                            let args = undelegate_stake::UnstakeArgs {
-                                                amount: unstake_amount,
-                                            };
-                                            undelegate_stake::undelegate_stake(
-                                                args,
-                                                &key,
-                                                base_url.clone(),
-                                                unsecure_conn,
-                                            )
-                                            .await;
-                                            break;
-                                        }
-                                        Ok(_) => {
-                                            println!(
-                                                "  Please enter a valid number greater than 0."
-                                            );
-                                        }
-                                        Err(_) => {
-                                            println!("  Please enter a valid number.");
-                                        }
-                                    }
-                                }
-                                Err(inquire::error::InquireError::OperationCanceled) => {
-                                    println!("  Unstaking operation canceled.");
-                                    break;
-                                }
-                                Err(_) => {
-                                    println!("  Invalid input. Please try again.");
-                                }
-                            }
-                        }
-                    }*/
                     _ => println!("  Unknown selection."),
                 }
             }
