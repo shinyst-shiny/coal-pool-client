@@ -1,4 +1,5 @@
 use crate::balance::get_token_balance;
+use crate::guild::delegate_stake_guild::PoolGuild;
 use base64::{prelude::BASE64_STANDARD, Engine};
 use clap::Parser;
 use colored::*;
@@ -9,21 +10,23 @@ use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer, transaction
 use std::str::FromStr;
 
 #[derive(Debug, Parser)]
-pub struct StakeToGuildArgs {
-    #[arg(long, value_name = "AMOUNT", help = "Amount of LP to stake.")]
+pub struct UnStakeFromGuildArgs {
+    #[arg(long, value_name = "AMOUNT", help = "Amount of LP to remove.")]
     pub amount: f64,
 
     #[arg(long, value_name = "MINT", help = "Mint of LP.")]
     pub mint: String,
+
+    #[arg(long, value_name = "MEMBER", help = "Address of the guild member.")]
+    pub member_address: Pubkey,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct PoolGuild {
-    pub pubkey: String,
-    pub authority: String,
-}
-
-pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, unsecure: bool) {
+pub async fn un_stake_from_guild(
+    args: UnStakeFromGuildArgs,
+    key: Keypair,
+    url: String,
+    unsecure: bool,
+) {
     let base_url = url;
     let client = reqwest::Client::new();
     let url_prefix = if unsecure {
@@ -31,13 +34,18 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     } else {
         "https".to_string()
     };
-    let balance =
-        get_token_balance(&key.pubkey(), base_url.clone(), unsecure, args.mint.clone()).await;
+    let balance = get_token_balance(
+        &args.member_address,
+        base_url.clone(),
+        unsecure,
+        args.mint.clone(),
+    )
+    .await;
 
     // Ensure stake amount does not exceed balance
-    let guild_stake_amount = if args.amount > balance {
+    let guild_un_stake_amount = if args.amount > balance {
         println!(
-            "  You do not have enough LP tokens to stake {} to the guild.\n  Adjusting stake amount to the maximum available: {} LP tokens",
+            "  You do not have enough LP tokens to un stake {} from the guild.\n  Adjusting un stake amount to the maximum available: {} LP tokens",
             args.amount, balance
         );
         balance
@@ -48,8 +56,8 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     // RED TEXT
     match Text::new(
         &format!(
-            "  Are you sure you want to stake {} LP tokens tokens? (Y/n or 'esc' to cancel)",
-            guild_stake_amount
+            "  Are you sure you want to un stake {} LP tokens tokens? (Y/n or 'esc' to cancel)",
+            guild_un_stake_amount
         )
         .red()
         .to_string(),
@@ -58,21 +66,21 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     {
         Ok(confirm) => {
             if confirm.trim().eq_ignore_ascii_case("esc") {
-                println!("  Guild staking canceled.");
+                println!("  Guild un staking canceled.");
                 return;
             } else if confirm.trim().is_empty() || confirm.trim().to_lowercase() == "y" {
                 // Proceed with staking
             } else {
-                println!("  Guild staking canceled.");
+                println!("  Guild un staking canceled.");
                 return;
             }
         }
         Err(InquireError::OperationCanceled) => {
-            println!("  Guild staking operation canceled.");
+            println!("  Guild un staking operation canceled.");
             return;
         }
         Err(_) => {
-            println!("  Invalid input. Guild staking canceled.");
+            println!("  Invalid input. Guild un staking canceled.");
             return;
         }
     }
@@ -90,17 +98,6 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
         .unwrap();
     let fee_pubkey = Pubkey::from_str(&resp).unwrap();
 
-    let resp = client
-        .get(format!("{}://{}/guild/addresses", url_prefix, base_url))
-        .send()
-        .await
-        .unwrap();
-    let guild: PoolGuild = resp.json().await.unwrap();
-    let guild_pubkey = Pubkey::from_str(&guild.pubkey).unwrap();
-
-    // we have all the basic info, let's start building the transaction
-    let mut ixs: Vec<Instruction> = vec![];
-
     // check if the pubkey is of a member of the guild
     if let Ok(err) = client
         .get(format!(
@@ -114,24 +111,19 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     {
         match err.status() {
             reqwest::StatusCode::NOT_FOUND => {
-                println!(
-                    "  The public key is not initialized for guilds yet, adding to the process"
-                );
-                ixs.extend([
-                    coal_guilds_api::sdk::new_member(key.pubkey()),
-                    coal_guilds_api::sdk::delegate(key.pubkey(), guild_pubkey),
-                ]);
+                println!("  The public key is not initialized for guilds yet, cancelling process");
+                return;
             }
             reqwest::StatusCode::OK => {
-                println!("  The public key is not in any guild, adding the delegation process");
-                ixs.extend([coal_guilds_api::sdk::delegate(key.pubkey(), guild_pubkey)]);
+                println!("  The public key is not in any guild, cancelling the process");
+                return;
             }
             reqwest::StatusCode::FOUND => {
-                println!("  The public key is is already in the guild");
+                println!("  The public key is is in the guild");
             }
             _ => {
                 println!(
-                    "  Impossible to add the user to the pool guild. Error: {}",
+                    "  Impossible to check the user guild. Error: {}",
                     err.text().await.unwrap()
                 );
                 return;
@@ -139,19 +131,25 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
         }
     }
 
-    print!(
-        "  Public key setup for staking {} LP token to the guild.",
-        guild_stake_amount
-    );
+    let resp = client
+        .get(format!("{}://{}/guild/addresses", url_prefix, base_url))
+        .send()
+        .await
+        .unwrap();
+    let guild: PoolGuild = resp.json().await.unwrap();
+    let guild_pubkey = Pubkey::from_str(&guild.pubkey).unwrap();
 
-    let guild_stake_amount_u64 =
-        (guild_stake_amount * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+    let guild_un_stake_amount_u64 =
+        (guild_un_stake_amount * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+
+    // we have all the basic info, let's start building the transaction
+    let mut ixs: Vec<Instruction> = vec![];
 
     // now we add the actual stake instruction
-    ixs.extend([coal_guilds_api::sdk::stake(
+    ixs.extend([coal_guilds_api::sdk::unstake(
         key.pubkey(),
         guild_pubkey,
-        guild_stake_amount_u64,
+        guild_un_stake_amount_u64,
     )]);
 
     let resp = client
@@ -173,12 +171,12 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
 
     let resp = client
         .post(format!(
-            "{}://{}/guild/stake?pubkey={}&mint={}&amount={}",
+            "{}://{}/guild/unstake?pubkey={}&mint={}&amount={}",
             url_prefix,
             base_url,
             key.pubkey().to_string(),
             args.mint,
-            guild_stake_amount_u64
+            guild_un_stake_amount_u64
         ))
         .body(encoded_tx)
         .send()
@@ -187,7 +185,7 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
         if let Ok(txt) = res.text().await {
             match txt.as_str() {
                 "SUCCESS" => {
-                    println!("  Successfully staked to guild!");
+                    println!("  Successfully removed stake from guild!");
                 }
                 other => {
                     println!("  Transaction failed: {}", other);

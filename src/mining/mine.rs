@@ -594,6 +594,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                         \nPool Submitted Difficulty: {}\
                                         \nPool Earned: {:.11} COAL / {:.11} ORE\
                                         \nPool Balance: {:.11} COAL / {:.11} ORE\
+                                        \nSystem TOP stake: {:.11} COAL\
                                         \nGuild Address: {}\
                                         \nGuild Stake: {:.11} LP\
                                         \nActive Miners: {}\
@@ -620,6 +621,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                         data.ore_details.reward_details.total_rewards,
                                         data.coal_details.reward_details.total_balance,
                                         data.ore_details.reward_details.total_balance,
+                                        data.coal_details.top_stake,
                                         pool_guild,
                                         data.coal_details.guild_total_stake
                                             / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64),
