@@ -1,8 +1,10 @@
 use crate::balance::get_token_balance;
 use crate::delegate_stake_guild::StakeToGuildArgs;
+use crate::undelegate_stake_guild::UnStakeFromGuildArgs;
 use balance::balance;
 use claim::ClaimArgs;
 use clap::{Parser, Subcommand};
+use coal_guilds_api::consts::LP_MINT_ADDRESS;
 use core_affinity::get_core_ids;
 use dirs::home_dir;
 use generate_key::generate_key;
@@ -13,7 +15,7 @@ use semver::Version;
 use serde_json;
 use signup::{signup, SignupArgs};
 use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::read_keypair_file;
+use solana_sdk::signature::{read_keypair_file, Signer};
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
@@ -22,16 +24,17 @@ use std::str::FromStr;
 
 mod balance;
 mod claim;
+mod database;
 mod delegate_stake;
+mod delegate_stake_guild;
+mod earnings;
+mod generate_key;
 mod mine;
 mod protomine;
 mod signup;
 mod stake_balance;
 mod undelegate_stake;
-mod generate_key;
-mod database;
-mod earnings;
-mod delegate_stake_guild;
+mod undelegate_stake_guild;
 
 const CONFIG_FILE: &str = "keypair_list";
 
@@ -63,12 +66,7 @@ struct Args {
     )]
     use_http: bool,
 
-    #[arg(
-        long,
-        short,
-        action,
-        help = "Use vim mode for menu navigation."
-    )]
+    #[arg(long, short, action, help = "Use vim mode for menu navigation.")]
     vim: bool,
 
     #[command(subcommand)]
@@ -85,6 +83,8 @@ enum Commands {
     Signup(SignupArgs),
     #[command(about = "Join the guild in inactive mode and stake LP tokens to the pool guild.")]
     StakeToGuild(StakeToGuildArgs),
+    #[command(about = "Remove the LP tokens from the pool guild.")]
+    UnStakeFromGuild(UnStakeFromGuildArgs),
     #[command(about = "Claim rewards.")]
     Claim(ClaimArgs),
     #[command(about = "Display current coal token balance.")]
@@ -251,7 +251,7 @@ fn get_keypair_path(default_keypair: &str) -> Option<String> {
             "  Select a keypair to use or manage:",
             keypair_paths.clone(),
         )
-            .prompt()
+        .prompt()
         {
             Ok(s) => s,
             Err(inquire::error::InquireError::OperationCanceled) => {
@@ -329,8 +329,12 @@ fn remove_keypair() {
         };
 
     // Check if the user is trying to remove the default keypair
-    if selection == replace_home_with_tilde(&solana_default_keypair) || selection == replace_home_with_tilde(&hot_wallet_keypair) {
-        println!("  Removal of the default keypair (id.json) or mining-hot-wallet.json is not allowed.");
+    if selection == replace_home_with_tilde(&solana_default_keypair)
+        || selection == replace_home_with_tilde(&hot_wallet_keypair)
+    {
+        println!(
+            "  Removal of the default keypair (id.json) or mining-hot-wallet.json is not allowed."
+        );
         return;
     }
 
@@ -350,7 +354,6 @@ fn remove_keypair() {
 
     println!("  Keypair path '{}' has been removed.", selection);
 }
-
 
 fn replace_home_with_tilde(path: &str) -> String {
     if let Some(home_dir) = home_dir() {
@@ -452,7 +455,7 @@ fn ask_for_custom_keypair() -> Option<String> {
                 "  Select a keypair to use from the directory:",
                 keypair_files.clone(),
             )
-                .prompt()
+            .prompt()
             {
                 Ok(s) => s,
                 Err(inquire::error::InquireError::OperationCanceled) => {
@@ -486,9 +489,9 @@ fn ask_for_custom_keypair() -> Option<String> {
             let add_to_list = Confirm::new(
                 "  Would you like to add this keypair path to the configuration file?",
             )
-                .with_default(true)
-                .prompt()
-                .unwrap_or(true);
+            .with_default(true)
+            .prompt()
+            .unwrap_or(true);
 
             if add_to_list {
                 let config_path = PathBuf::from(CONFIG_FILE);
@@ -564,6 +567,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         //"  Stake",
         //"  Unstake",
         "  Stake to Guild",
+        "  UnStake from Guild",
         "  Generate Keypair",
         "  Update Client",
         "  Exit",
@@ -589,9 +593,9 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
             ),
             options,
         )
-            .with_page_size(9) // Adjusted page size after adding an option
-            .with_vim_mode(vim_mode)
-            .prompt()
+        .with_page_size(9) // Adjusted page size after adding an option
+        .with_vim_mode(vim_mode)
+        .prompt()
         {
             Ok(s) => Some(s),
             Err(inquire::error::InquireError::OperationCanceled) => {
@@ -624,10 +628,11 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let base_url = if args.url == "pool.coal-pool.xyz" {
-        let url_input = Text::new("  Please enter the server URL, just press Enter to use the default:")
-            .with_default("pool.coal-pool.xyz")
-            .prompt()
-            .unwrap_or_else(|_| "pool.coal-pool.xyz".to_string());
+        let url_input =
+            Text::new("  Please enter the server URL, just press Enter to use the default:")
+                .with_default("pool.coal-pool.xyz")
+                .prompt()
+                .unwrap_or_else(|_| "pool.coal-pool.xyz".to_string());
         url_input
     } else {
         args.url.clone()
@@ -654,7 +659,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         unsecure_conn,
         selection.as_deref(),
     )
-        .await?;
+    .await?;
     Ok(())
 }
 
@@ -699,6 +704,9 @@ async fn run_command(
         Some(Commands::StakeToGuild(args)) => {
             delegate_stake_guild::stake_to_guild(args, key, base_url, unsecure_conn).await;
         }
+        Some(Commands::UnStakeFromGuild(args)) => {
+            undelegate_stake_guild::un_stake_from_guild(args, key, base_url, unsecure_conn).await;
+        }
         None => {
             if let Some(choice) = selection {
                 match choice {
@@ -709,13 +717,18 @@ async fn run_command(
                         // Ask for the number of threads
                         let threads: u32 = loop {
                             let input = Text::new(&format!(
-                                "  Enter the number of threads (default: {}):", max_threads
+                                "  Enter the number of threads (default: {}):",
+                                max_threads
                             ))
-                                .with_default(&max_threads.to_string())
-                                .prompt()?;
+                            .with_default(&max_threads.to_string())
+                            .prompt()?;
 
                             match input.trim().parse::<u32>() {
-                                Ok(valid_threads) if valid_threads > 0 && valid_threads <= max_threads as u32 => break valid_threads,
+                                Ok(valid_threads)
+                                    if valid_threads > 0 && valid_threads <= max_threads as u32 =>
+                                {
+                                    break valid_threads
+                                }
                                 _ => {
                                     println!("  Invalid thread count. Please enter a number between 1 and {}.", max_threads);
                                 }
@@ -724,14 +737,17 @@ async fn run_command(
 
                         // Ask for buffer time
                         let buffer: u32 = loop {
-                            let buffer_input = Text::new("  Enter the buffer time in seconds (optional):")
-                                .with_default("0")
-                                .prompt()?;
+                            let buffer_input =
+                                Text::new("  Enter the buffer time in seconds (optional):")
+                                    .with_default("0")
+                                    .prompt()?;
 
                             match buffer_input.trim().parse::<u32>() {
                                 Ok(valid_buffer) => break valid_buffer,
                                 _ => {
-                                    println!("  Invalid buffer input. Please enter a valid number.");
+                                    println!(
+                                        "  Invalid buffer input. Please enter a valid number."
+                                    );
                                 }
                             }
                         };
@@ -777,7 +793,9 @@ async fn run_command(
                                     }
                                 }
                             };
-                            SignupArgs { pubkey: Some(alt_pubkey) }
+                            SignupArgs {
+                                pubkey: Some(alt_pubkey),
+                            }
                         } else {
                             SignupArgs { pubkey: None }
                         };
@@ -785,17 +803,23 @@ async fn run_command(
                         signup(signup_args, base_url, key, unsecure_conn).await;
                     }
                     "  Claim Rewards" => {
-                        let use_separate_pubkey = Confirm::new("  Do you want to claim the rewards to a separate public key?")
-                            .with_default(false)
-                            .prompt()?;
+                        let use_separate_pubkey = Confirm::new(
+                            "  Do you want to claim the rewards to a separate public key?",
+                        )
+                        .with_default(false)
+                        .prompt()?;
                         let receiver_pubkey = if use_separate_pubkey {
-                            let pubkey_input = Text::new("  Enter the receiver public key:")
-                                .prompt()?;
+                            let pubkey_input =
+                                Text::new("  Enter the receiver public key:").prompt()?;
                             Some(pubkey_input)
                         } else {
                             None
                         };
-                        let args = ClaimArgs { amount: None, y: false, receiver_pubkey };
+                        let args = ClaimArgs {
+                            amount: None,
+                            y: false,
+                            receiver_pubkey,
+                        };
                         claim::claim(args, key, base_url, unsecure_conn).await;
                     }
                     "  View Balances" => {
@@ -805,18 +829,24 @@ async fn run_command(
                     }
                     "  Stake to Guild" => {
                         let token_selection = "COAL-SOL".to_string();
-                        let lp_address = "AtDMJwa4j5w2nKTnzWrxkHHwqfsEvLniErVDcgNNeSft".to_string();
-                        let token_balance = get_token_balance(&key, base_url.clone(), unsecure_conn, lp_address.clone()).await;
+                        let lp_address = LP_MINT_ADDRESS.to_string();
+                        let token_balance = get_token_balance(
+                            &key.pubkey(),
+                            base_url.clone(),
+                            unsecure_conn,
+                            lp_address.clone(),
+                        )
+                        .await;
 
                         println!(
-                            "  Current balance for {}: {}",
+                            "  Current staked balance for {}: {}",
                             token_selection, token_balance
                         );
 
                         // If the balance is 0, display a message and exit
                         if token_balance == 0.0 {
                             println!(
-                                "  You cannot stake because your {} balance is 0.",
+                                "  You cannot remove the stake because your {} balance is 0.",
                                 token_selection
                             );
                             std::process::exit(0);
@@ -824,9 +854,9 @@ async fn run_command(
 
                         loop {
                             let stake_input = Text::new(
-                                "  Enter the amount of LP to stake (or 'esc' to cancel):",
+                                "  Enter the amount of LP to unstake (or 'esc' to cancel):",
                             )
-                                .prompt();
+                            .prompt();
 
                             match stake_input {
                                 Ok(input) => {
@@ -848,7 +878,7 @@ async fn run_command(
                                                 base_url.clone(),
                                                 unsecure_conn,
                                             )
-                                                .await;
+                                            .await;
                                             break;
                                         }
                                         Ok(_) => {
@@ -863,6 +893,82 @@ async fn run_command(
                                 }
                                 Err(inquire::error::InquireError::OperationCanceled) => {
                                     println!("  Staking operation canceled.");
+                                    break;
+                                }
+                                Err(_) => {
+                                    println!("  Invalid input. Please try again.");
+                                }
+                            }
+                        }
+                    }
+                    "  UnStake from Guild" => {
+                        let member_address = coal_guilds_api::state::member_pda(key.pubkey()).0;
+                        let token_selection = "COAL-SOL".to_string();
+                        let lp_address = LP_MINT_ADDRESS.to_string();
+                        let token_balance = get_token_balance(
+                            &member_address,
+                            base_url.clone(),
+                            unsecure_conn,
+                            lp_address.clone(),
+                        )
+                        .await;
+
+                        println!(
+                            "  Current balance for {}: {}",
+                            token_selection, token_balance
+                        );
+
+                        // If the balance is 0, display a message and exit
+                        if token_balance == 0.0 {
+                            println!(
+                                "  You cannot remove stake because your {} balance is 0.",
+                                token_selection
+                            );
+                            std::process::exit(0);
+                        }
+
+                        loop {
+                            let stake_input = Text::new(
+                                "  Enter the amount of LP to remove from stake (or 'esc' to cancel):",
+                            )
+                                .prompt();
+
+                            match stake_input {
+                                Ok(input) => {
+                                    let input = input.trim();
+                                    if input.eq_ignore_ascii_case("esc") {
+                                        println!("  Staking operation canceled.");
+                                        break;
+                                    }
+
+                                    match input.parse::<f64>() {
+                                        Ok(stake_amount) if stake_amount > 0.0 => {
+                                            let args = UnStakeFromGuildArgs {
+                                                amount: stake_amount,
+                                                mint: lp_address.clone(),
+                                                member_address,
+                                            };
+                                            undelegate_stake_guild::un_stake_from_guild(
+                                                args,
+                                                key,
+                                                base_url.clone(),
+                                                unsecure_conn,
+                                            )
+                                            .await;
+                                            break;
+                                        }
+                                        Ok(_) => {
+                                            println!(
+                                                "  Please enter a valid number greater than 0."
+                                            );
+                                        }
+                                        Err(_) => {
+                                            println!("  Please enter a valid number.");
+                                        }
+                                    }
+                                }
+                                Err(inquire::error::InquireError::OperationCanceled) => {
+                                    println!("  Un Staking operation canceled.");
                                     break;
                                 }
                                 Err(_) => {
@@ -1020,7 +1126,10 @@ async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Update canceled.");
         }
     } else {
-        println!("  You are already running the latest version ({}).", current_version);
+        println!(
+            "  You are already running the latest version ({}).",
+            current_version
+        );
     }
     Ok(())
 }

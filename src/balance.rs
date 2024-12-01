@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use solana_sdk::pubkey::Pubkey;
 use solana_sdk::{signature::Keypair, signer::Signer};
 
 #[derive(Deserialize)]
@@ -102,7 +103,7 @@ pub async fn get_balance(key: &Keypair, url: String, unsecure: bool) -> f64 {
     balance_response.parse::<f64>().unwrap_or(0.0)
 }
 
-pub async fn get_token_balance(key: &Keypair, url: String, unsecure: bool, mint: String) -> f64 {
+pub async fn get_token_balance(key: &Pubkey, url: String, unsecure: bool, mint: String) -> f64 {
     let client = reqwest::Client::new();
     let url_prefix = if unsecure { "http" } else { "https" };
 
@@ -111,7 +112,7 @@ pub async fn get_token_balance(key: &Keypair, url: String, unsecure: bool, mint:
             "{}://{}/v2/miner/balance?pubkey={}&mint={}",
             url_prefix,
             url,
-            key.pubkey().to_string(),
+            key.to_string(),
             mint
         ))
         .send()
