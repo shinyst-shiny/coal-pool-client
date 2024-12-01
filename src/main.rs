@@ -86,12 +86,6 @@ enum Commands {
     Claim(ClaimArgs),
     #[command(about = "Display current coal token balance.")]
     Balance,
-    /*#[command(about = "Delegate stake for the pool miner.")]
-    Stake(delegate_stake::StakeArgs),
-    #[command(about = "Undelegate stake from the pool miner.")]
-    Unstake(undelegate_stake::UnstakeArgs),
-    #[command(about = "Delegated stake balance.")]
-    StakeBalance,*/
     #[command(about = "Generate a new solana keypair for mining.")]
     GenerateKeypair,
     #[command(about = "Displays locally tracked earnings.")]
