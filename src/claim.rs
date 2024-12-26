@@ -109,11 +109,11 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         balance.chromium
     );
 
-    let minimum_claim_amount_coal = 1.0;
+    let minimum_claim_amount_coal = 5.0;
     let minimum_claim_amount_ore = 0.05;
     if rewards.coal < minimum_claim_amount_coal && rewards.ore < minimum_claim_amount_ore {
         println!();
-        println!("  You have not reached the required claim limit of at least 1 COAL OR 0.05 ORE.");
+        println!("  You have not reached the required claim limit of at least 5 COAL OR 0.05 ORE.");
         println!("  Keep mining to accumulate more rewards before you can withdraw.");
         return;
     }
