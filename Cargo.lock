@@ -708,39 +708,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "coal-pool-client"
-version = "3.1.0"
-dependencies = [
- "base64 0.22.1",
- "bincode",
- "clap",
- "coal-api",
- "coal-guilds-api",
- "colored",
- "core_affinity",
- "dirs",
- "drillx_2",
- "futures-util",
- "indicatif",
- "inquire",
- "ore-api",
- "qrcode",
- "rayon",
- "reqwest",
- "rusqlite",
- "semver",
- "serde",
- "serde_json",
- "solana-sdk",
- "spl-associated-token-account",
- "spl-token",
- "tiny-bip39",
- "tokio",
- "tokio-tungstenite",
- "url",
-]
-
-[[package]]
 name = "coal-utils"
 version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1216,6 +1183,39 @@ checksum = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d"
 dependencies = [
  "libc",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "excalivator-client"
+version = "3.1.1"
+dependencies = [
+ "base64 0.22.1",
+ "bincode",
+ "clap",
+ "coal-api",
+ "coal-guilds-api",
+ "colored",
+ "core_affinity",
+ "dirs",
+ "drillx_2",
+ "futures-util",
+ "indicatif",
+ "inquire",
+ "ore-api",
+ "qrcode",
+ "rayon",
+ "reqwest",
+ "rusqlite",
+ "semver",
+ "serde",
+ "serde_json",
+ "solana-sdk",
+ "spl-associated-token-account",
+ "spl-token",
+ "tiny-bip39",
+ "tokio",
+ "tokio-tungstenite",
+ "url",
 ]
 
 [[package]]

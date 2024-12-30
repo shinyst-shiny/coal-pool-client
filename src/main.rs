@@ -44,7 +44,7 @@ struct Args {
         long,
         value_name = "SERVER_URL",
         help = "URL of the server to connect to",
-        default_value = "pool.coal-pool.xyz"
+        default_value = "pool.excalivator.xyz"
     )]
     url: String,
 
@@ -102,7 +102,7 @@ async fn main() {
     // Ensure the URL is set to the default if not provided
     let mut args = args;
     if args.url.is_empty() {
-        args.url = "pool.coal-pool.xyz".to_string();
+        args.url = "pool.excalivator.xyz".to_string();
     }
 
     // Does the config file exist? If not, create one
@@ -620,12 +620,12 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let base_url = if args.url == "pool.coal-pool.xyz" {
+    let base_url = if args.url == "pool.excalivator.xyz" {
         let url_input =
             Text::new("  Please enter the server URL, just press Enter to use the default:")
-                .with_default("pool.coal-pool.xyz")
+                .with_default("pool.excalivator.xyz")
                 .prompt()
-                .unwrap_or_else(|_| "pool.coal-pool.xyz".to_string());
+                .unwrap_or_else(|_| "pool.excalivator.xyz".to_string());
         url_input
     } else {
         args.url.clone()
@@ -1040,7 +1040,7 @@ async fn run_command(
 
 async fn is_update_available() -> Result<bool, Box<dyn std::error::Error>> {
     let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let latest_version_str = get_latest_crate_version("coal-pool-client").await?;
+    let latest_version_str = get_latest_crate_version("excalivator-client").await?;
     let latest_version = Version::parse(&latest_version_str)?;
 
     Ok(current_version < latest_version)
@@ -1048,7 +1048,7 @@ async fn is_update_available() -> Result<bool, Box<dyn std::error::Error>> {
 
 async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
     let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let latest_version_str = get_latest_crate_version("coal-pool-client").await?;
+    let latest_version_str = get_latest_crate_version("excalivator-client").await?;
     let latest_version = Version::parse(&latest_version_str)?;
 
     if current_version < latest_version {
@@ -1061,7 +1061,7 @@ async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Updating to version {}...", latest_version);
             let status = Command::new("cargo")
                 .arg("install")
-                .arg("coal-pool-client")
+                .arg("excalivator-client")
                 .status()?;
             if status.success() {
                 println!("  Update completed successfully.");
@@ -1087,7 +1087,7 @@ async fn get_latest_crate_version(crate_name: &str) -> Result<String, Box<dyn st
     let client = reqwest::Client::new();
     let resp = client
         .get(&url)
-        .header("User-Agent", "coal-pool-client")
+        .header("User-Agent", "excalivator-client")
         .send()
         .await?;
 

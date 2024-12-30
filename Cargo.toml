@@ -1,6 +1,6 @@
 [package]
-name = "coal-pool-client"
-version = "3.1.0"
+name = "excalivator-client"
+version = "3.1.1"
 edition = "2021"
 description = "Coal mining pool client."
 license = "Apache-2.0"
