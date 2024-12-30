@@ -581,7 +581,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         Some(_) => None,
         None => match Select::new(
             &format!(
-                "Welcome to Coal Pool Client v{}, what would you like to do?",
+                "Welcome to Excalivator Pool Client v{}, what would you like to do?",
                 version
             ),
             options,

@@ -1,4 +1,4 @@
-use std::{io::Write, fs};
+use std::{fs, io::Write};
 
 use bip39::{Mnemonic, Seed};
 use dirs::home_dir;
@@ -20,7 +20,9 @@ pub fn generate_key() {
 
     let derivation_path = DerivationPath::from_absolute_path_str("m/44'/501'/0'/0'").unwrap();
 
-    if let Ok(new_key) = Keypair::from_seed_and_derivation_path(seed.as_bytes(), Some(derivation_path)) {
+    if let Ok(new_key) =
+        Keypair::from_seed_and_derivation_path(seed.as_bytes(), Some(derivation_path))
+    {
         let dir = home_dir();
 
         if let Some(dir) = dir {
@@ -51,15 +53,20 @@ pub fn generate_key() {
                         .open(&config_path)
                         .expect("Failed to open configuration file for appending.");
 
-                    writeln!(file, "{}", key_dir.to_str().expect("Failed to key_dir.to_str()"))
-                        .expect("Failed to write keypair path to configuration file.");
+                    writeln!(
+                        file,
+                        "{}",
+                        key_dir.to_str().expect("Failed to key_dir.to_str()")
+                    )
+                    .expect("Failed to write keypair path to configuration file.");
 
                     let pubkey = new_key.pubkey();
 
                     // Generate QR code for the public key
                     if let Ok(code) = QrCode::new(pubkey.to_string()) {
                         // Render the QR code without extra indentation
-                        let string = code.render::<unicode::Dense1x2>()
+                        let string = code
+                            .render::<unicode::Dense1x2>()
                             .quiet_zone(false) // Remove additional padding or quiet zone
                             .build();
 
@@ -75,7 +82,7 @@ pub fn generate_key() {
                     println!("    {}", phrase);
                     println!("\n  New Mining Hot Wallet Public Key: {}", pubkey);
                     println!("\n  The QR code above can be scanned with Phantom/Solflare wallet to fund this wallet for any reason.");
-                    println!("\n  Note: Coal Pool does not require a sign up fee.");
+                    println!("\n  Note: Excalivator Pool does not require a sign up fee.");
                 }
                 Err(e) => {
                     println!("  Failed to write keypair to file: {}", e);

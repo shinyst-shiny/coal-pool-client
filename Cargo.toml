@@ -2,7 +2,7 @@
 name = "excalivator-client"
 version = "3.1.1"
 edition = "2021"
-description = "Coal mining pool client."
+description = "Excalivator mining pool client."
 license = "Apache-2.0"
 repository = "https://github.com/shinyst-shiny/coal-pool-client"
 keywords = ["solana", "crypto", "mining", "client", "mining-pool"]
