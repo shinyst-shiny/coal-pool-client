@@ -2,6 +2,8 @@ use crate::balance::get_token_balance;
 use crate::coal_stake::stake::{stake_to_pool, StakeToPoolArgs};
 use crate::guild::delegate_stake_guild::{stake_to_guild, StakeToGuildArgs};
 use crate::guild::undelegate_stake_guild::{un_stake_from_guild, UnStakeFromGuildArgs};
+use crate::mining::mine::{mine_public_key, MinePublicKeyArgs};
+use crate::utils::{get_last_pubkey, save_last_pubkey};
 use balance::balance;
 use claim::ClaimArgs;
 use clap::{Parser, Subcommand};
@@ -11,13 +13,13 @@ use core_affinity::get_core_ids;
 use dirs::home_dir;
 use generate_key::generate_key;
 use inquire::{Confirm, Select, Text};
-use mining::mine::{mine, MineArgs};
+use mining::mine::{mine_private_key, MinePrivateKeyArgs};
 use mining::protomine::{protomine, MineArgs as ProtoMineArgs};
 use semver::Version;
 use serde_json;
 use signup::{signup, SignupArgs};
 use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::{read_keypair_file, Signer};
+use solana_sdk::signature::{read_keypair_file, Keypair, Signer};
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
@@ -33,6 +35,7 @@ mod generate_key;
 mod guild;
 mod mining;
 mod signup;
+mod utils;
 
 const CONFIG_FILE: &str = "keypair_list";
 
@@ -73,8 +76,10 @@ struct Args {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    #[command(about = "Connect to pool and start mining. (Default)")]
-    Mine(MineArgs),
+    #[command(about = "Connect to pool and start mining using a public key. (Default)")]
+    MinePublicKey(MinePublicKeyArgs),
+    #[command(about = "Connect to pool and start mining using a private key")]
+    MinePrivateKey(MinePrivateKeyArgs),
     #[command(about = "Connect to pool and start mining using Prototype Software.")]
     Protomine(ProtoMineArgs),
     #[command(about = "Sign up to mine with the pool.")]
@@ -124,7 +129,9 @@ async fn main() {
 
         if let Some(command) = args.command {
             // A valid command is provided, execute it directly
-            if let Err(_) = run_command(Some(command), key, args.url, args.use_http, None).await {
+            if let Err(_) =
+                run_command(Some(command), Some(key), args.url, args.use_http, None).await
+            {
                 println!("  An error occurred while executing the command.");
             }
         } else {
@@ -135,7 +142,34 @@ async fn main() {
         }
     } else {
         // The keypair does not exist, proceed directly to the menu without showing an error
-        if let Err(_) = run_menu(args.vim).await {
+        if let Some(command) = args.command {
+            match command {
+                Commands::MinePublicKey(mine_args) => {
+                    // This is a MinePublicKey command
+                    // You can use mine_args here, which is of type MinePublicKeyArgs
+                    println!("MinePublicKey command detected");
+                    // Add your logic for handling MinePublicKey command
+                    if let Err(_) = run_command(
+                        Some(Commands::MinePublicKey(mine_args)),
+                        None,
+                        args.url,
+                        args.use_http,
+                        None,
+                    )
+                    .await
+                    {
+                        println!("  An error occurred while executing the command.");
+                    }
+                }
+                // Other command variants...
+                _ => {
+                    // Handle other commands or provide a default behavior
+                    if let Err(_) = run_menu(args.vim).await {
+                        println!("  An error occurred, exiting program.");
+                    }
+                }
+            }
+        } else if let Err(_) = run_menu(args.vim).await {
             println!("  An error occurred, exiting program.");
         }
     }
@@ -554,7 +588,8 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut options = vec![
-        "  Mine",
+        "  Mine with Public Key",
+        "  Mine with Private Key",
         "  Sign up",
         "  Claim Rewards",
         "  View Balances",
@@ -630,20 +665,22 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
     } else {
         args.url.clone()
     };
-
+    let mut key: Option<Keypair> = None;
     let unsecure_conn = args.use_http;
+    if let Some("  Mine with Public Key") = selection {
+    } else {
+        let keypair_path = loop {
+            match get_keypair_path(&args.keypair) {
+                Some(path) => break path,
+                None => println!("  Failed to get keypair path. Please try again."),
+            }
+        };
 
-    let keypair_path = loop {
-        match get_keypair_path(&args.keypair) {
-            Some(path) => break path,
-            None => println!("  Failed to get keypair path. Please try again."),
-        }
-    };
-
-    let key = load_keypair(&keypair_path).unwrap_or_else(|| {
-        println!("  Returning to keypair selection.");
-        std::process::exit(1);
-    });
+        key = Some(load_keypair(&keypair_path).unwrap_or_else(|| {
+            println!("  Returning to keypair selection.");
+            std::process::exit(1);
+        }));
+    }
 
     run_command(
         args.command,
@@ -658,26 +695,29 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
 
 async fn run_command(
     command: Option<Commands>,
-    key: solana_sdk::signature::Keypair,
+    key: Option<Keypair>,
     base_url: String,
     unsecure_conn: bool,
     selection: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match command {
-        Some(Commands::Mine(args)) => {
-            mine(args, key, base_url, unsecure_conn).await;
+        Some(Commands::MinePublicKey(args)) => {
+            mine_public_key(args, base_url, unsecure_conn).await;
+        }
+        Some(Commands::MinePrivateKey(args)) => {
+            mine_private_key(args, key.unwrap(), base_url, unsecure_conn).await;
         }
         Some(Commands::Protomine(args)) => {
-            protomine(args, key, base_url, unsecure_conn).await;
+            protomine(args, key.unwrap(), base_url, unsecure_conn).await;
         }
         Some(Commands::Signup(args)) => {
-            signup(args, base_url, key, unsecure_conn).await;
+            signup(args, base_url, key.unwrap(), unsecure_conn).await;
         }
         Some(Commands::Claim(args)) => {
-            claim::claim(args, key, base_url, unsecure_conn).await;
+            claim::claim(args, key.unwrap(), base_url, unsecure_conn).await;
         }
         Some(Commands::Balance) => {
-            balance(&key, base_url, unsecure_conn).await;
+            balance(&key.unwrap(), base_url, unsecure_conn).await;
         }
         Some(Commands::GenerateKeypair) => {
             generate_key::generate_key();
@@ -686,18 +726,88 @@ async fn run_command(
             earnings::earnings();
         }
         Some(Commands::StakeToPool(args)) => {
-            stake_to_pool(args, key, base_url, unsecure_conn).await;
+            stake_to_pool(args, key.unwrap(), base_url, unsecure_conn).await;
         }
         Some(Commands::StakeToGuild(args)) => {
-            stake_to_guild(args, key, base_url, unsecure_conn).await;
+            stake_to_guild(args, key.unwrap(), base_url, unsecure_conn).await;
         }
         Some(Commands::UnStakeFromGuild(args)) => {
-            un_stake_from_guild(args, key, base_url, unsecure_conn).await;
+            un_stake_from_guild(args, key.unwrap(), base_url, unsecure_conn).await;
         }
         None => {
             if let Some(choice) = selection {
                 match choice {
-                    "  Mine" => {
+                    "  Mine with Public Key" => {
+                        let core_ids = get_core_ids().unwrap();
+                        let max_threads = core_ids.len();
+
+                        // Ask for buffer time
+                        let pubkey: String = loop {
+                            let default_pubkey = get_last_pubkey().unwrap_or_default();
+                            let pubkey_input = Text::new("  Enter the public key:")
+                                .with_default(&default_pubkey)
+                                .prompt()?;
+
+                            match pubkey_input.trim().parse::<String>() {
+                                Ok(valid_pubkey) => {
+                                    save_last_pubkey(&valid_pubkey);
+                                    break valid_pubkey;
+                                }
+                                _ => {
+                                    println!(
+                                        "  Invalid pubkey input. Please enter a valid string."
+                                    );
+                                }
+                            }
+                        };
+
+                        // Ask for the number of threads
+                        let threads: u32 = loop {
+                            let input = Text::new(&format!(
+                                "  Enter the number of threads (default: {}):",
+                                max_threads
+                            ))
+                            .with_default(&max_threads.to_string())
+                            .prompt()?;
+
+                            match input.trim().parse::<u32>() {
+                                Ok(valid_threads)
+                                    if valid_threads > 0 && valid_threads <= max_threads as u32 =>
+                                {
+                                    break valid_threads
+                                }
+                                _ => {
+                                    println!("  Invalid thread count. Please enter a number between 1 and {}.", max_threads);
+                                }
+                            }
+                        };
+
+                        // Ask for buffer time
+                        let buffer: u32 = loop {
+                            let buffer_input =
+                                Text::new("  Enter the buffer time in seconds (optional):")
+                                    .with_default("0")
+                                    .prompt()?;
+
+                            match buffer_input.trim().parse::<u32>() {
+                                Ok(valid_buffer) => break valid_buffer,
+                                _ => {
+                                    println!(
+                                        "  Invalid buffer input. Please enter a valid number."
+                                    );
+                                }
+                            }
+                        };
+
+                        let args = MinePublicKeyArgs {
+                            pubkey,
+                            threads,
+                            buffer,
+                        };
+                        mine_public_key(args, base_url, unsecure_conn).await;
+                    }
+
+                    "  Mine with Private Key" => {
                         let core_ids = get_core_ids().unwrap();
                         let max_threads = core_ids.len();
 
@@ -739,8 +849,8 @@ async fn run_command(
                             }
                         };
 
-                        let args = MineArgs { threads, buffer };
-                        mine(args, key, base_url, unsecure_conn).await;
+                        let args = MinePrivateKeyArgs { threads, buffer };
+                        mine_private_key(args, key.unwrap(), base_url, unsecure_conn).await;
                     }
 
                     "  ProtoMine" => {
@@ -760,7 +870,7 @@ async fn run_command(
                         let args = ProtoMineArgs {
                             threads: threads.try_into().unwrap(),
                         };
-                        protomine(args, key, base_url, unsecure_conn).await;
+                        protomine(args, key.unwrap(), base_url, unsecure_conn).await;
                     }
                     "  Sign up" => {
                         let use_different_pubkey = Confirm::new("  Would you like to sign up a different pubkey than your selected keypair's pubkey?")
@@ -787,7 +897,7 @@ async fn run_command(
                             SignupArgs { pubkey: None }
                         };
 
-                        signup(signup_args, base_url, key, unsecure_conn).await;
+                        signup(signup_args, base_url, key.unwrap(), unsecure_conn).await;
                     }
                     "  Claim Rewards" => {
                         let use_separate_pubkey = Confirm::new(
@@ -807,224 +917,230 @@ async fn run_command(
                             y: false,
                             receiver_pubkey,
                         };
-                        claim::claim(args, key, base_url, unsecure_conn).await;
+                        claim::claim(args, key.unwrap(), base_url, unsecure_conn).await;
                     }
                     "  View Balances" => {
-                        balance(&key, base_url.clone(), unsecure_conn).await;
+                        balance(&key.unwrap(), base_url.clone(), unsecure_conn).await;
                         println!();
                         earnings::earnings(); // Display earnings after balance
                     }
                     "  Stake to Pool" => {
-                        let token_balance = get_token_balance(
-                            &key.pubkey(),
-                            base_url.clone(),
-                            unsecure_conn,
-                            COAL_MINT_ADDRESS.to_string().clone(),
-                        )
-                        .await;
-
-                        println!("  Available COAL balance: {}", token_balance);
-
-                        // If the balance is 0, display a message and exit
-                        if token_balance == 0.0 {
-                            println!("  You cannot stake because your COAL balance is 0.");
-                            std::process::exit(0);
-                        }
-
-                        loop {
-                            let stake_input = Text::new(
-                                "  Enter the amount of COAL to stake (or 'esc' to cancel):",
+                        if let Some(key) = key {
+                            let token_balance = get_token_balance(
+                                &key.pubkey(),
+                                base_url.clone(),
+                                unsecure_conn,
+                                COAL_MINT_ADDRESS.to_string().clone(),
                             )
-                            .prompt();
+                            .await;
 
-                            match stake_input {
-                                Ok(input) => {
-                                    let input = input.trim();
-                                    if input.eq_ignore_ascii_case("esc") {
+                            println!("  Available COAL balance: {}", token_balance);
+
+                            // If the balance is 0, display a message and exit
+                            if token_balance == 0.0 {
+                                println!("  You cannot stake because your COAL balance is 0.");
+                                std::process::exit(0);
+                            }
+
+                            loop {
+                                let stake_input = Text::new(
+                                    "  Enter the amount of COAL to stake (or 'esc' to cancel):",
+                                )
+                                .prompt();
+
+                                match stake_input {
+                                    Ok(input) => {
+                                        let input = input.trim();
+                                        if input.eq_ignore_ascii_case("esc") {
+                                            println!("  Staking operation canceled.");
+                                            break;
+                                        }
+
+                                        match input.parse::<f64>() {
+                                            Ok(stake_amount) if stake_amount > 0.0 => {
+                                                let args = StakeToPoolArgs {
+                                                    amount: stake_amount,
+                                                };
+                                                stake_to_pool(
+                                                    args,
+                                                    key,
+                                                    base_url.clone(),
+                                                    unsecure_conn,
+                                                )
+                                                .await;
+                                                break;
+                                            }
+                                            Ok(_) => {
+                                                println!(
+                                                    "  Please enter a valid number greater than 0."
+                                                );
+                                            }
+                                            Err(_) => {
+                                                println!("  Please enter a valid number.");
+                                            }
+                                        }
+                                    }
+                                    Err(inquire::error::InquireError::OperationCanceled) => {
                                         println!("  Staking operation canceled.");
                                         break;
                                     }
-
-                                    match input.parse::<f64>() {
-                                        Ok(stake_amount) if stake_amount > 0.0 => {
-                                            let args = StakeToPoolArgs {
-                                                amount: stake_amount,
-                                            };
-                                            stake_to_pool(
-                                                args,
-                                                key,
-                                                base_url.clone(),
-                                                unsecure_conn,
-                                            )
-                                            .await;
-                                            break;
-                                        }
-                                        Ok(_) => {
-                                            println!(
-                                                "  Please enter a valid number greater than 0."
-                                            );
-                                        }
-                                        Err(_) => {
-                                            println!("  Please enter a valid number.");
-                                        }
+                                    Err(_) => {
+                                        println!("  Invalid input. Please try again.");
                                     }
-                                }
-                                Err(inquire::error::InquireError::OperationCanceled) => {
-                                    println!("  Staking operation canceled.");
-                                    break;
-                                }
-                                Err(_) => {
-                                    println!("  Invalid input. Please try again.");
                                 }
                             }
                         }
                     }
                     "  Stake to Guild" => {
-                        let token_selection = "COAL-SOL".to_string();
-                        let lp_address = LP_MINT_ADDRESS.to_string();
-                        let token_balance = get_token_balance(
-                            &key.pubkey(),
-                            base_url.clone(),
-                            unsecure_conn,
-                            lp_address.clone(),
-                        )
-                        .await;
-
-                        println!(
-                            "  Current staked balance for {}: {}",
-                            token_selection, token_balance
-                        );
-
-                        // If the balance is 0, display a message and exit
-                        if token_balance == 0.0 {
-                            println!(
-                                "  You cannot stake because your {} balance is 0.",
-                                token_selection
-                            );
-                            std::process::exit(0);
-                        }
-
-                        loop {
-                            let stake_input = Text::new(
-                                "  Enter the amount of LP to stake (or 'esc' to cancel):",
+                        if let Some(key) = key {
+                            let token_selection = "COAL-SOL".to_string();
+                            let lp_address = LP_MINT_ADDRESS.to_string();
+                            let token_balance = get_token_balance(
+                                &key.pubkey(),
+                                base_url.clone(),
+                                unsecure_conn,
+                                lp_address.clone(),
                             )
-                            .prompt();
+                            .await;
 
-                            match stake_input {
-                                Ok(input) => {
-                                    let input = input.trim();
-                                    if input.eq_ignore_ascii_case("esc") {
+                            println!(
+                                "  Current staked balance for {}: {}",
+                                token_selection, token_balance
+                            );
+
+                            // If the balance is 0, display a message and exit
+                            if token_balance == 0.0 {
+                                println!(
+                                    "  You cannot stake because your {} balance is 0.",
+                                    token_selection
+                                );
+                                std::process::exit(0);
+                            }
+
+                            loop {
+                                let stake_input = Text::new(
+                                    "  Enter the amount of LP to stake (or 'esc' to cancel):",
+                                )
+                                .prompt();
+
+                                match stake_input {
+                                    Ok(input) => {
+                                        let input = input.trim();
+                                        if input.eq_ignore_ascii_case("esc") {
+                                            println!("  Staking operation canceled.");
+                                            break;
+                                        }
+
+                                        match input.parse::<f64>() {
+                                            Ok(stake_amount) if stake_amount > 0.0 => {
+                                                let args = StakeToGuildArgs {
+                                                    amount: stake_amount,
+                                                    mint: lp_address.clone(), // Auto-staking by default
+                                                };
+                                                stake_to_guild(
+                                                    args,
+                                                    key,
+                                                    base_url.clone(),
+                                                    unsecure_conn,
+                                                )
+                                                .await;
+                                                break;
+                                            }
+                                            Ok(_) => {
+                                                println!(
+                                                    "  Please enter a valid number greater than 0."
+                                                );
+                                            }
+                                            Err(_) => {
+                                                println!("  Please enter a valid number.");
+                                            }
+                                        }
+                                    }
+                                    Err(inquire::error::InquireError::OperationCanceled) => {
                                         println!("  Staking operation canceled.");
                                         break;
                                     }
-
-                                    match input.parse::<f64>() {
-                                        Ok(stake_amount) if stake_amount > 0.0 => {
-                                            let args = StakeToGuildArgs {
-                                                amount: stake_amount,
-                                                mint: lp_address.clone(), // Auto-staking by default
-                                            };
-                                            stake_to_guild(
-                                                args,
-                                                key,
-                                                base_url.clone(),
-                                                unsecure_conn,
-                                            )
-                                            .await;
-                                            break;
-                                        }
-                                        Ok(_) => {
-                                            println!(
-                                                "  Please enter a valid number greater than 0."
-                                            );
-                                        }
-                                        Err(_) => {
-                                            println!("  Please enter a valid number.");
-                                        }
+                                    Err(_) => {
+                                        println!("  Invalid input. Please try again.");
                                     }
-                                }
-                                Err(inquire::error::InquireError::OperationCanceled) => {
-                                    println!("  Staking operation canceled.");
-                                    break;
-                                }
-                                Err(_) => {
-                                    println!("  Invalid input. Please try again.");
                                 }
                             }
                         }
                     }
                     "  UnStake from Guild" => {
-                        let member_address = coal_guilds_api::state::member_pda(key.pubkey()).0;
-                        let token_selection = "COAL-SOL".to_string();
-                        let lp_address = LP_MINT_ADDRESS.to_string();
-                        let token_balance = get_token_balance(
-                            &member_address,
-                            base_url.clone(),
-                            unsecure_conn,
-                            lp_address.clone(),
-                        )
-                        .await;
-
-                        println!(
-                            "  Current balance for {}: {}",
-                            token_selection, token_balance
-                        );
-
-                        // If the balance is 0, display a message and exit
-                        if token_balance == 0.0 {
-                            println!(
-                                "  You cannot remove stake because your {} balance is 0.",
-                                token_selection
-                            );
-                            std::process::exit(0);
-                        }
-
-                        loop {
-                            let stake_input = Text::new(
-                                "  Enter the amount of LP to remove from stake (or 'esc' to cancel):",
+                        if let Some(key) = key {
+                            let member_address = coal_guilds_api::state::member_pda(key.pubkey()).0;
+                            let token_selection = "COAL-SOL".to_string();
+                            let lp_address = LP_MINT_ADDRESS.to_string();
+                            let token_balance = get_token_balance(
+                                &member_address,
+                                base_url.clone(),
+                                unsecure_conn,
+                                lp_address.clone(),
                             )
-                                .prompt();
+                            .await;
 
-                            match stake_input {
-                                Ok(input) => {
-                                    let input = input.trim();
-                                    if input.eq_ignore_ascii_case("esc") {
-                                        println!("  Staking operation canceled.");
-                                        break;
-                                    }
+                            println!(
+                                "  Current balance for {}: {}",
+                                token_selection, token_balance
+                            );
 
-                                    match input.parse::<f64>() {
-                                        Ok(stake_amount) if stake_amount > 0.0 => {
-                                            let args = UnStakeFromGuildArgs {
-                                                amount: stake_amount,
-                                                mint: lp_address.clone(),
-                                                member_address,
-                                            };
-                                            un_stake_from_guild(
-                                                args,
-                                                key,
-                                                base_url.clone(),
-                                                unsecure_conn,
-                                            )
-                                            .await;
+                            // If the balance is 0, display a message and exit
+                            if token_balance == 0.0 {
+                                println!(
+                                    "  You cannot remove stake because your {} balance is 0.",
+                                    token_selection
+                                );
+                                std::process::exit(0);
+                            }
+
+                            loop {
+                                let stake_input = Text::new(
+                                    "  Enter the amount of LP to remove from stake (or 'esc' to cancel):",
+                                )
+                                    .prompt();
+
+                                match stake_input {
+                                    Ok(input) => {
+                                        let input = input.trim();
+                                        if input.eq_ignore_ascii_case("esc") {
+                                            println!("  Staking operation canceled.");
                                             break;
                                         }
-                                        Ok(_) => {
-                                            println!(
-                                                "  Please enter a valid number greater than 0."
-                                            );
-                                        }
-                                        Err(_) => {
-                                            println!("  Please enter a valid number.");
+
+                                        match input.parse::<f64>() {
+                                            Ok(stake_amount) if stake_amount > 0.0 => {
+                                                let args = UnStakeFromGuildArgs {
+                                                    amount: stake_amount,
+                                                    mint: lp_address.clone(),
+                                                    member_address,
+                                                };
+                                                un_stake_from_guild(
+                                                    args,
+                                                    key,
+                                                    base_url.clone(),
+                                                    unsecure_conn,
+                                                )
+                                                .await;
+                                                break;
+                                            }
+                                            Ok(_) => {
+                                                println!(
+                                                    "  Please enter a valid number greater than 0."
+                                                );
+                                            }
+                                            Err(_) => {
+                                                println!("  Please enter a valid number.");
+                                            }
                                         }
                                     }
-                                }
-                                Err(inquire::error::InquireError::OperationCanceled) => {
-                                    println!("  Un Staking operation canceled.");
-                                    break;
-                                }
-                                Err(_) => {
-                                    println!("  Invalid input. Please try again.");
+                                    Err(inquire::error::InquireError::OperationCanceled) => {
+                                        println!("  Un Staking operation canceled.");
+                                        break;
+                                    }
+                                    Err(_) => {
+                                        println!("  Invalid input. Please try again.");
+                                    }
                                 }
                             }
                         }
