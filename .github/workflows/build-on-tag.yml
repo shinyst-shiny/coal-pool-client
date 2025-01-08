@@ -1,44 +1,119 @@
-name: Build and Package on Tag
+name: Native Build and Package for Multiple Architectures
 
 on:
   push:
     tags:
-      - "v*"  # Matches tags like v1.0.0, v2.0.0
+      - "v*"  # Trigger on version tags (e.g., v1.0.0)
 
 jobs:
-  build:
-    name: Build and Package for All Platforms
+  ubuntu-build:
+    name: Build on Ubuntu (x86_64 and aarch64)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set Up Rust
+      - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           components: rustfmt, clippy
           override: true
 
-      - name: Install Dependencies
+      - name: Add Targets
         run: |
-          rustup target add x86_64-apple-darwin aarch64-apple-darwin \
-            aarch64-unknown-linux-musl x86_64-unknown-linux-musl x86_64-pc-windows-gnu
-          cargo install cargo-zigbuild
+          rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
 
-      - name: Install Cross
-        run: cargo install cross
-
-      - name: Execute Build Script
-        env:
-          CARGO_HOME: ${{ runner.temp }}/cargo
+      - name: Build for x86_64
         run: |
-          chmod +x ./build_all.sh
-          ./build_all.sh
+          mkdir -p dist/x86_64
+          cargo build --release --target x86_64-unknown-linux-gnu
+          cp target/x86_64-unknown-linux-gnu/release/excalivator-client dist/x86_64/
+
+      - name: Build for aarch64
+        run: |
+          mkdir -p dist/aarch64
+          cargo build --release --target aarch64-unknown-linux-gnu
+          cp target/aarch64-unknown-linux-gnu/release/excalivator-client dist/aarch64/
+
+      - name: Package Binaries
+        run: |
+          tar -czvf dist/excalivator-client-linux-x86_64.tar.gz -C dist/x86_64 excalivator-client
+          tar -czvf dist/excalivator-client-linux-aarch64.tar.gz -C dist/aarch64 excalivator-client
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: release-binaries
+          name: linux-binaries
+          path: dist/
+
+  windows-build:
+    name: Build on Windows (x86_64 only)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+
+      - name: Build for x86_64
+        run: |
+          mkdir -p dist
+          cargo build --release
+          cp target\\release\\excalivator-client.exe dist\\
+          tar -czvf dist\\excalivator-client-windows-x86_64.tar.gz -C dist excalivator-client.exe
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-binaries
+          path: dist/
+
+  macos-build:
+    name: Build on macOS (x86_64 and aarch64)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+
+      - name: Add Targets
+        run: |
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
+      - name: Build for x86_64
+        run: |
+          mkdir -p dist/x86_64
+          cargo build --release --target x86_64-apple-darwin
+          cp target/x86_64-apple-darwin/release/excalivator-client dist/x86_64/
+
+      - name: Build for aarch64
+        run: |
+          mkdir -p dist/aarch64
+          cargo build --release --target aarch64-apple-darwin
+          cp target/aarch64-apple-darwin/release/excalivator-client dist/aarch64/
+
+      - name: Package Binaries
+        run: |
+          tar -czvf dist/excalivator-client-macos-x86_64.tar.gz -C dist/x86_64 excalivator-client
+          tar -czvf dist/excalivator-client-macos-aarch64.tar.gz -C dist/aarch64 excalivator-client
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-binaries
           path: dist/
