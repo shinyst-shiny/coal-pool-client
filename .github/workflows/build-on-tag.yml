@@ -14,6 +14,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -22,13 +32,13 @@ jobs:
           override: true
 
       - name: Add Target
-        run: rustup target add x86_64-unknown-linux-musl
+        run: rustup target add x86_64-unknown-linux-gnu
 
       - name: Build for x86_64
         run: |
           mkdir -p dist/x86_64
-          cargo build --release --target x86_64-unknown-linux-musl
-          cp target/x86_64-unknown-linux-musl/release/excalivator-client dist/x86_64/
+          cargo build --release --target x86_64-unknown-linux-gnu
+          cp target/x86_64-unknown-linux-gnu/release/excalivator-client dist/x86_64/
 
       - name: Package Binary
         run: |
@@ -48,6 +58,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Set Up QEMU
         uses: docker/setup-qemu-action@v3
         with:
@@ -59,14 +79,14 @@ jobs:
             apt-get update &&
             apt-get install -y build-essential curl libssl-dev pkg-config &&
             curl https://sh.rustup.rs -sSf | sh -s -- -y &&
-            rustup target add aarch64-unknown-linux-musl &&
-            cargo build --release --target aarch64-unknown-linux-musl
+            rustup target add aarch64-unknown-linux-gnu &&
+            cargo build --release --target aarch64-unknown-linux-gnu
           "
 
       - name: Copy Build to Host
         run: |
           mkdir -p dist/aarch64
-          cp target/aarch64-unknown-linux-musl/release/excalivator-client dist/aarch64/
+          cp target/aarch64-unknown-linux-gnu/release/excalivator-client dist/aarch64/
 
       - name: Package Binary
         run: |
@@ -86,12 +106,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           components: rustfmt, clippy
           override: true
+
+      - name: Add Target
+        run: rustup target add x86_64-pc-windows-msvc
 
       - name: Build for x86_64
         run: |
@@ -103,7 +136,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: windows-binaries
+          name: windows-x86_64-binary
           path: dist/
 
   macos-build:
@@ -113,6 +146,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -147,3 +190,31 @@ jobs:
         with:
           name: macos-binaries
           path: dist/
+
+  create-release:
+    needs: [ ubuntu-x86_64-build, ubuntu-aarch64-build, windows-build, macos-build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/*
+          asset_name: ${{ matrix.asset_name }}
+          asset_content_type: application/gzip
