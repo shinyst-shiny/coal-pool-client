@@ -22,13 +22,13 @@ jobs:
           override: true
 
       - name: Add Target
-        run: rustup target add x86_64-unknown-linux-gnu
+        run: rustup target add x86_64-unknown-linux-musl
 
       - name: Build for x86_64
         run: |
           mkdir -p dist/x86_64
-          cargo build --release --target x86_64-unknown-linux-gnu
-          cp target/x86_64-unknown-linux-gnu/release/excalivator-client dist/x86_64/
+          cargo build --release --target x86_64-unknown-linux-musl
+          cp target/x86_64-unknown-linux-musl/release/excalivator-client dist/x86_64/
 
       - name: Package Binary
         run: |
@@ -59,15 +59,14 @@ jobs:
             apt-get update &&
             apt-get install -y build-essential curl libssl-dev pkg-config &&
             curl https://sh.rustup.rs -sSf | sh -s -- -y &&
-            source $HOME/.cargo/env &&
-            rustup target add aarch64-unknown-linux-gnu &&
-            cargo build --release --target aarch64-unknown-linux-gnu
+            rustup target add aarch64-unknown-linux-musl &&
+            cargo build --release --target aarch64-unknown-linux-musl
           "
 
       - name: Copy Build to Host
         run: |
           mkdir -p dist/aarch64
-          cp target/aarch64-unknown-linux-gnu/release/excalivator-client dist/aarch64/
+          cp target/aarch64-unknown-linux-musl/release/excalivator-client dist/aarch64/
 
       - name: Package Binary
         run: |
