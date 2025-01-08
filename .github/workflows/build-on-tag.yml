@@ -1,0 +1,44 @@
+name: Build and Package on Tag
+
+on:
+  push:
+    tags:
+      - "v*"  # Matches tags like v1.0.0, v2.0.0
+
+jobs:
+  build:
+    name: Build and Package for All Platforms
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+
+      - name: Install Dependencies
+        run: |
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin \
+            aarch64-unknown-linux-musl x86_64-unknown-linux-musl x86_64-pc-windows-gnu
+          cargo install cargo-zigbuild
+
+      - name: Install Cross
+        run: cargo install cross
+
+      - name: Execute Build Script
+        env:
+          CARGO_HOME: ${{ runner.temp }}/cargo
+        run: |
+          chmod +x ./build_all.sh
+          ./build_all.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-binaries
+          path: dist/
