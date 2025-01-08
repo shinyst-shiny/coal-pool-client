@@ -41,16 +41,21 @@ jobs:
           path: dist/
 
   ubuntu-aarch64-build:
-    name: Build on Ubuntu aarch64
+    name: Build on Emulated ARM64 Ubuntu
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Use Native ARM64 Docker Container
+      - name: Set Up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: aarch64
+
+      - name: Build Inside ARM64 Docker
         run: |
-          docker run --rm -v $(pwd):/app -w /app arm64v8/ubuntu:latest bash -c "
+          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app arm64v8/ubuntu:latest bash -c "
             apt-get update &&
             apt-get install -y build-essential curl libssl-dev pkg-config &&
             curl https://sh.rustup.rs -sSf | sh -s -- -y &&
