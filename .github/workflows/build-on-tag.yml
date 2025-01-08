@@ -50,26 +50,28 @@ jobs:
           name: ubuntu-x86_64-binary
           path: dist/
 
+
+
   create-release:
     needs: [ ubuntu-x86_64-build ]
     runs-on: ubuntu-latest
     steps:
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Download all workflow run artifacts
         uses: actions/download-artifact@v3
 
       - name: Display structure of downloaded files
         run: ls -R
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "Release ${{ github.ref_name }}" \
+            --notes "Release ${{ github.ref_name }}"
 
       - name: Upload Release Assets
         env:
@@ -78,9 +80,6 @@ jobs:
           for file in ubuntu-x86_64-binary/* ubuntu-aarch64-binary/* windows-x86_64-binary/* macos-binaries/*; do
             if [[ -f "$file" ]]; then
               echo "Uploading $file"
-              curl -H "Authorization: token $GITHUB_TOKEN" \
-                   -H "Content-Type: $(file -b --mime-type $file)" \
-                   --data-binary @"$file" \
-                   "${{ steps.create_release.outputs.upload_url }}?name=$(basename $file)"
+              gh release upload ${{ github.ref_name }} "$file" --clobber
             fi
           done
