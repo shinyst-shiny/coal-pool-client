@@ -211,12 +211,19 @@ jobs:
       - name: Download all workflow run artifacts
         uses: actions/download-artifact@v3
 
+      - name: Display structure of downloaded files
+        run: ls -R
+
       - name: Upload Release Assets
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/*
-          asset_name: ${{ matrix.asset_name }}
-          asset_content_type: application/gzip
+        run: |
+          for file in ubuntu-x86_64-binary/* ubuntu-aarch64-binary/* windows-x86_64-binary/* macos-binaries/*; do
+            if [[ -f "$file" ]]; then
+              echo "Uploading $file"
+              curl -H "Authorization: token $GITHUB_TOKEN" \
+                   -H "Content-Type: $(file -b --mime-type $file)" \
+                   --data-binary @"$file" \
+                   "${{ steps.create_release.outputs.upload_url }}?name=$(basename $file)"
+            fi
+          done
