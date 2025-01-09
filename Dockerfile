@@ -19,4 +19,4 @@ RUN LATEST_VERSION=$(curl -s https://api.github.com/repos/shinyst-shiny/coal-poo
 
 ### HOW TO RUN IT ###
 # 1) Run in a terminal: docker build -t excalivator:latest .
-# 2) Run in a terminal: run -d excalivator:latest ./excalivator-client mine-public-key --pubkey PUB_KEY --threads N --buffer 0
+# 2) Run in a terminal: docker run -d excalivator:latest ./excalivator-client mine-public-key --pubkey PUB_KEY --threads N --buffer 0
