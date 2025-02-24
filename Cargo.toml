@@ -1,6 +1,6 @@
 [package]
 name = "excalivator-client"
-version = "3.2.1"
+version = "3.2.2"
 edition = "2021"
 description = "Excalivator mining pool client."
 license = "Apache-2.0"
@@ -14,7 +14,7 @@ clap = { version = "4.5.13", features = ["derive"] }
 core_affinity = "0.8.1"
 coal-api = "2.6.0"
 coal-guilds-api = "1.1.0"
-ore-api = "2.2.0"
+ore-api = "3.0.0"
 drillx_2 = "1.1.0"
 futures-util = "0.3.30"
 reqwest = { version = "^0.11.0", features = ["json", "rustls-tls"] }

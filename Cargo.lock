@@ -1187,7 +1187,7 @@ dependencies = [
 
 [[package]]
 name = "excalivator-client"
-version = "3.2.1"
+version = "3.2.2"
 dependencies = [
  "base64 0.22.1",
  "bincode",
@@ -2332,9 +2332,9 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "ore-api"
-version = "2.7.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7610924995b6efe0f010a03b6451da906a3724f1b0f4ea873693be2e9e4d23bc"
+checksum = "5fe81730f32cc3e75a1dda6ed6aa824d6bab2622867a135d4173851fda40f14a"
 dependencies = [
  "array-const-fn-init",
  "bytemuck",
