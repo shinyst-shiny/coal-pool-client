@@ -122,7 +122,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     let balance_grains_coal =
         (rewards.coal * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
     let balance_grains_ore =
-        (rewards.ore * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
+        (rewards.ore * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
     let balance_grains_chromium =
         (rewards.chromium * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
 
@@ -138,11 +138,11 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     );
     println!(
         "  Adjusting claim amount to the maximum available: {} ORE.",
-        amount_to_ui_amount(balance_grains_ore, ore_api::consts::TOKEN_DECIMALS)
+        amount_to_ui_amount(balance_grains_ore, coal_api::consts::TOKEN_DECIMALS)
     );
     println!(
         "  Adjusting claim amount to the maximum available: {} CHROMIUM.",
-        amount_to_ui_amount(balance_grains_chromium, ore_api::consts::TOKEN_DECIMALS)
+        amount_to_ui_amount(balance_grains_chromium, coal_api::consts::TOKEN_DECIMALS)
     );*/
 
     // RED TEXT
@@ -151,7 +151,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
             &format!(
                 "  Are you sure you want to claim {} COAL and {} ORE and {} CHROMIUM? (Y/n or 'esc' to cancel)",
                 amount_to_ui_amount(balance_grains_coal, coal_api::consts::TOKEN_DECIMALS),
-                amount_to_ui_amount(balance_grains_ore, ore_api::consts::TOKEN_DECIMALS),
+                amount_to_ui_amount(balance_grains_ore, coal_api::consts::TOKEN_DECIMALS),
                 amount_to_ui_amount(balance_grains_chromium, coal_api::consts::TOKEN_DECIMALS)
             )
                 .red()
@@ -203,7 +203,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     println!(
         "  Sending claim request for {} COAL and {} ORE and {} CHROMIUM...",
         amount_to_ui_amount(balance_grains_coal, coal_api::consts::TOKEN_DECIMALS),
-        amount_to_ui_amount(balance_grains_ore, ore_api::consts::TOKEN_DECIMALS),
+        amount_to_ui_amount(balance_grains_ore, coal_api::consts::TOKEN_DECIMALS),
         amount_to_ui_amount(balance_grains_chromium, coal_api::consts::TOKEN_DECIMALS)
     );
 

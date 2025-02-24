@@ -352,7 +352,7 @@ pub async fn mine_public_key(args: MinePublicKeyArgs, url: String, unsecure: boo
                             );
                             let total_earnings_ore = amount_to_ui_amount(
                                 app_db.get_todays_earnings_ore(),
-                                ore_api::consts::TOKEN_DECIMALS,
+                                coal_api::consts::TOKEN_DECIMALS,
                             );
                             println!(
                                 "Today's Earnings: {} COAL, {} ORE",
@@ -589,17 +589,17 @@ pub async fn mine_public_key(args: MinePublicKeyArgs, url: String, unsecure: boo
                                         let pool_earned_ore =
                                             (data.ore_details.reward_details.total_rewards
                                                 * 10f64
-                                                    .powf(ore_api::consts::TOKEN_DECIMALS as f64))
+                                                    .powf(coal_api::consts::TOKEN_DECIMALS as f64))
                                                 as u64;
                                         let miner_earned_ore =
                                             (data.ore_details.reward_details.miner_earned_rewards
                                                 * 10f64
-                                                    .powf(ore_api::consts::TOKEN_DECIMALS as f64))
+                                                    .powf(coal_api::consts::TOKEN_DECIMALS as f64))
                                                 as u64;
                                         let miner_total_coal = data.miner_details.total_coal
                                             / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64);
                                         let miner_total_ore = data.miner_details.total_ore
-                                            / 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64);
+                                            / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64);
                                         let miner_total_chromium = data
                                             .miner_details
                                             .total_chromium
@@ -917,7 +917,7 @@ pub async fn mine_private_key(args: MinePrivateKeyArgs, key: Keypair, url: Strin
                         );
                         let total_earnings_ore = amount_to_ui_amount(
                             app_db.get_todays_earnings_ore(),
-                            ore_api::consts::TOKEN_DECIMALS,
+                            coal_api::consts::TOKEN_DECIMALS,
                         );
                         println!(
                             "Today's Earnings: {} COAL, {} ORE",
@@ -1153,16 +1153,16 @@ pub async fn mine_private_key(args: MinePrivateKeyArgs, key: Keypair, url: Strin
                                             as u64;
                                     let pool_earned_ore =
                                         (data.ore_details.reward_details.total_rewards
-                                            * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64))
+                                            * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64))
                                             as u64;
                                     let miner_earned_ore =
                                         (data.ore_details.reward_details.miner_earned_rewards
-                                            * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64))
+                                            * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64))
                                             as u64;
                                     let miner_total_coal = data.miner_details.total_coal
                                         / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64);
                                     let miner_total_ore = data.miner_details.total_ore
-                                        / 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64);
+                                        / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64);
                                     let miner_total_chromium = data.miner_details.total_chromium
                                         / 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64);
 
