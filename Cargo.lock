@@ -1187,7 +1187,7 @@ dependencies = [
 
 [[package]]
 name = "excalivator-client"
-version = "3.2.6"
+version = "3.2.7"
 dependencies = [
  "base64 0.22.1",
  "bincode",
