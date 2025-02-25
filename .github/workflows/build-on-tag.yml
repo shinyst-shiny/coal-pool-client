@@ -45,7 +45,7 @@ jobs:
           tar -czvf dist/excalivator-client-linux-x86_64.tar.gz -C dist/x86_64 excalivator-client
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ubuntu-x86_64-binary
           path: dist/
@@ -95,7 +95,7 @@ jobs:
           tar -czvf dist/excalivator-client-linux-aarch64.tar.gz -C dist/aarch64 excalivator-client
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ubuntu-aarch64-binary
           path: dist/
@@ -136,7 +136,7 @@ jobs:
           tar -czvf dist\\excalivator-client-windows-x86_64.tar.gz -C dist excalivator-client.exe
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-x86_64-binary
           path: dist/
@@ -188,7 +188,7 @@ jobs:
           tar -czvf dist/excalivator-client-macos-aarch64.tar.gz -C dist/aarch64 excalivator-client
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-binaries
           path: dist/
