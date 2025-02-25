@@ -1,4 +1,5 @@
 use crate::balance::{MinerBalance, MinerRewards};
+use crate::utils::TOKEN_DECIMALS;
 use base64::{prelude::BASE64_STANDARD, Engine};
 use clap::Parser;
 use colored::*;
@@ -119,12 +120,9 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     }
 
     // Convert balance to grains
-    let balance_grains_coal =
-        (rewards.coal * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
-    let balance_grains_ore =
-        (rewards.ore * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
-    let balance_grains_chromium =
-        (rewards.chromium * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+    let balance_grains_coal = (rewards.coal * 10f64.powf(TOKEN_DECIMALS as f64)) as u64;
+    let balance_grains_ore = (rewards.ore * 10f64.powf(TOKEN_DECIMALS as f64)) as u64;
+    let balance_grains_chromium = (rewards.chromium * 10f64.powf(TOKEN_DECIMALS as f64)) as u64;
 
     // If balance is zero, inform the user and return to keypair selection
     if balance_grains_coal == 0 && balance_grains_ore == 0 && balance_grains_chromium == 0 {
@@ -134,15 +132,15 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
 
     /*println!(
         "  Adjusting claim amount to the maximum available: {} COAL.",
-        amount_to_ui_amount(balance_grains_coal, coal_api::consts::TOKEN_DECIMALS)
+        amount_to_ui_amount(balance_grains_coal, TOKEN_DECIMALS)
     );
     println!(
         "  Adjusting claim amount to the maximum available: {} ORE.",
-        amount_to_ui_amount(balance_grains_ore, coal_api::consts::TOKEN_DECIMALS)
+        amount_to_ui_amount(balance_grains_ore, TOKEN_DECIMALS)
     );
     println!(
         "  Adjusting claim amount to the maximum available: {} CHROMIUM.",
-        amount_to_ui_amount(balance_grains_chromium, coal_api::consts::TOKEN_DECIMALS)
+        amount_to_ui_amount(balance_grains_chromium, TOKEN_DECIMALS)
     );*/
 
     // RED TEXT
@@ -150,9 +148,9 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         match Text::new(
             &format!(
                 "  Are you sure you want to claim {} COAL and {} ORE and {} CHROMIUM? (Y/n or 'esc' to cancel)",
-                amount_to_ui_amount(balance_grains_coal, coal_api::consts::TOKEN_DECIMALS),
-                amount_to_ui_amount(balance_grains_ore, coal_api::consts::TOKEN_DECIMALS),
-                amount_to_ui_amount(balance_grains_chromium, coal_api::consts::TOKEN_DECIMALS)
+                amount_to_ui_amount(balance_grains_coal, TOKEN_DECIMALS),
+                amount_to_ui_amount(balance_grains_ore, TOKEN_DECIMALS),
+                amount_to_ui_amount(balance_grains_chromium, TOKEN_DECIMALS)
             )
                 .red()
                 .to_string(),
@@ -202,9 +200,9 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
 
     println!(
         "  Sending claim request for {} COAL and {} ORE and {} CHROMIUM...",
-        amount_to_ui_amount(balance_grains_coal, coal_api::consts::TOKEN_DECIMALS),
-        amount_to_ui_amount(balance_grains_ore, coal_api::consts::TOKEN_DECIMALS),
-        amount_to_ui_amount(balance_grains_chromium, coal_api::consts::TOKEN_DECIMALS)
+        amount_to_ui_amount(balance_grains_coal, TOKEN_DECIMALS),
+        amount_to_ui_amount(balance_grains_ore, TOKEN_DECIMALS),
+        amount_to_ui_amount(balance_grains_chromium, TOKEN_DECIMALS)
     );
 
     let mut signed_msg = vec![];

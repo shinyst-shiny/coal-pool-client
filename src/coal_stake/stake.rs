@@ -1,22 +1,12 @@
-use crate::balance::get_token_balance;
-use base64::prelude::BASE64_STANDARD;
-use base64::Engine;
 use clap::Parser;
-use coal_api::consts::COAL_MINT_ADDRESS;
-use colored::*;
-use inquire::{InquireError, Text};
-use solana_sdk::instruction::Instruction;
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::{signature::Keypair, signer::Signer, transaction::Transaction};
-use spl_associated_token_account::get_associated_token_address;
-use std::str::FromStr;
+use solana_sdk::signer::Signer;
 
 #[derive(Debug, Parser)]
 pub struct StakeToPoolArgs {
     #[arg(long, value_name = "AMOUNT", help = "Amount of LP to stake.")]
     pub amount: f64,
 }
-pub async fn stake_to_pool(args: StakeToPoolArgs, key: Keypair, url: String, unsecure: bool) {
+/*pub async fn stake_to_pool(args: StakeToPoolArgs, key: Keypair, url: String, unsecure: bool) {
     let base_url = url;
     let client = reqwest::Client::new();
     let url_prefix = if unsecure {
@@ -130,8 +120,7 @@ pub async fn stake_to_pool(args: StakeToPoolArgs, key: Keypair, url: String, uns
         println!("  Signup transaction failed, please wait and try again.");
     }
 
-    let stake_amount_u64 =
-        (stake_amount * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+    let stake_amount_u64 = (stake_amount * 10f64.powf(TOKEN_DECIMALS as f64)) as u64;
 
     println!("stake_amount_u64 {}", stake_amount_u64);
 
@@ -205,3 +194,4 @@ pub async fn stake_to_pool(args: StakeToPoolArgs, key: Keypair, url: String, uns
         println!("  Transaction failed, please wait and try again.");
     }
 }
+*/

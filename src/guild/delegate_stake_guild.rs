@@ -23,7 +23,7 @@ pub struct PoolGuild {
     pub authority: String,
 }
 
-pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, unsecure: bool) {
+/*pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, unsecure: bool) {
     let base_url = url;
     let client = reqwest::Client::new();
     let url_prefix = if unsecure {
@@ -144,8 +144,7 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
         guild_stake_amount
     );
 
-    let guild_stake_amount_u64 =
-        (guild_stake_amount * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+    let guild_stake_amount_u64 = (guild_stake_amount * 10f64.powf(TOKEN_DECIMALS as f64)) as u64;
 
     // now we add the actual stake instruction
     ixs.extend([coal_guilds_api::sdk::stake(
@@ -199,4 +198,4 @@ pub async fn stake_to_guild(args: StakeToGuildArgs, key: Keypair, url: String, u
     } else {
         println!("  Transaction failed, please wait and try again.");
     }
-}
+}*/

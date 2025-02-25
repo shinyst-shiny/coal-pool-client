@@ -1,13 +1,5 @@
-use crate::balance::get_token_balance;
-use crate::guild::delegate_stake_guild::PoolGuild;
-use base64::{prelude::BASE64_STANDARD, Engine};
 use clap::Parser;
-use colored::*;
-use inquire::{InquireError, Text};
-use serde::{Deserialize, Serialize};
-use solana_sdk::instruction::Instruction;
-use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer, transaction::Transaction};
-use std::str::FromStr;
+use solana_sdk::{pubkey::Pubkey, signer::Signer};
 
 #[derive(Debug, Parser)]
 pub struct UnStakeFromGuildArgs {
@@ -21,7 +13,7 @@ pub struct UnStakeFromGuildArgs {
     pub member_address: Pubkey,
 }
 
-pub async fn un_stake_from_guild(
+/*pub async fn un_stake_from_guild(
     args: UnStakeFromGuildArgs,
     key: Keypair,
     url: String,
@@ -140,7 +132,7 @@ pub async fn un_stake_from_guild(
     let guild_pubkey = Pubkey::from_str(&guild.pubkey).unwrap();
 
     let guild_un_stake_amount_u64 =
-        (guild_un_stake_amount * 10f64.powf(coal_api::consts::TOKEN_DECIMALS as f64)) as u64;
+        (guild_un_stake_amount * 10f64.powf(TOKEN_DECIMALS as f64)) as u64;
 
     // we have all the basic info, let's start building the transaction
     let mut ixs: Vec<Instruction> = vec![];
@@ -197,4 +189,4 @@ pub async fn un_stake_from_guild(
     } else {
         println!("  Transaction failed, please wait and try again.");
     }
-}
+}*/

@@ -1,6 +1,7 @@
 use spl_token::amount_to_ui_amount;
 
 use crate::database::AppDatabase;
+use crate::utils::TOKEN_DECIMALS;
 
 pub fn earnings() {
     let app_db = AppDatabase::new();
@@ -13,8 +14,8 @@ pub fn earnings() {
         println!(
             "Day: {}, Total Earned: {} COAL, {} ORE",
             de_coal.0,
-            amount_to_ui_amount(de_coal.1, coal_api::consts::TOKEN_DECIMALS),
-            amount_to_ui_amount(de_ore.1, coal_api::consts::TOKEN_DECIMALS)
+            amount_to_ui_amount(de_coal.1, TOKEN_DECIMALS),
+            amount_to_ui_amount(de_ore.1, TOKEN_DECIMALS)
         );
     }
 }

@@ -1,14 +1,8 @@
-use crate::balance::get_token_balance;
-use crate::coal_stake::stake::{stake_to_pool, StakeToPoolArgs};
-use crate::guild::delegate_stake_guild::{stake_to_guild, StakeToGuildArgs};
-use crate::guild::undelegate_stake_guild::{un_stake_from_guild, UnStakeFromGuildArgs};
 use crate::mining::mine::{mine_public_key, MinePublicKeyArgs};
 use crate::utils::{get_last_pubkey, save_last_pubkey};
 use balance::balance;
 use claim::ClaimArgs;
 use clap::{Parser, Subcommand};
-use coal_api::consts::COAL_MINT_ADDRESS;
-use coal_guilds_api::consts::LP_MINT_ADDRESS;
 use core_affinity::get_core_ids;
 use dirs::home_dir;
 use generate_key::generate_key;
@@ -85,11 +79,11 @@ enum Commands {
     #[command(about = "Sign up to mine with the pool.")]
     Signup(SignupArgs),
     #[command(about = "Stake COAL to the pool.")]
-    StakeToPool(StakeToPoolArgs),
+    /*StakeToPool(StakeToPoolArgs),
     #[command(about = "Join the pool guild and stake LP tokens.")]
     StakeToGuild(StakeToGuildArgs),
     #[command(about = "Remove the LP tokens from the pool guild.")]
-    UnStakeFromGuild(UnStakeFromGuildArgs),
+    UnStakeFromGuild(UnStakeFromGuildArgs),*/
     #[command(about = "Claim rewards.")]
     Claim(ClaimArgs),
     #[command(about = "Display current coal token balance.")]
@@ -593,9 +587,9 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         "  Sign up",
         "  Claim Rewards",
         "  View Balances",
-        "  Stake to Pool",
+        /*"  Stake to Pool",
         "  Stake to Guild",
-        "  UnStake from Guild",
+        "  UnStake from Guild",*/
         "  Generate Keypair",
         "  Update Client",
         "  Exit",
@@ -725,7 +719,7 @@ async fn run_command(
         Some(Commands::Earnings) => {
             earnings::earnings();
         }
-        Some(Commands::StakeToPool(args)) => {
+        /*Some(Commands::StakeToPool(args)) => {
             stake_to_pool(args, key.unwrap(), base_url, unsecure_conn).await;
         }
         Some(Commands::StakeToGuild(args)) => {
@@ -733,7 +727,7 @@ async fn run_command(
         }
         Some(Commands::UnStakeFromGuild(args)) => {
             un_stake_from_guild(args, key.unwrap(), base_url, unsecure_conn).await;
-        }
+        }*/
         None => {
             if let Some(choice) = selection {
                 match choice {
@@ -924,7 +918,7 @@ async fn run_command(
                         println!();
                         earnings::earnings(); // Display earnings after balance
                     }
-                    "  Stake to Pool" => {
+                    /*"  Stake to Pool" => {
                         if let Some(key) = key {
                             let token_balance = get_token_balance(
                                 &key.pubkey(),
@@ -1144,7 +1138,7 @@ async fn run_command(
                                 }
                             }
                         }
-                    }
+                    }*/
                     _ => println!("  Unknown selection."),
                 }
             }

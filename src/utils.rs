@@ -1,7 +1,7 @@
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
-
+pub const TOKEN_DECIMALS: u8 = 11;
 pub fn get_config_dir() -> PathBuf {
     let mut config_dir = dirs::config_dir().expect("Failed to get config directory");
     config_dir.push("excalivator");
@@ -18,7 +18,8 @@ pub fn save_last_pubkey(pubkey: &str) {
         .truncate(true)
         .open(config_file)
         .expect("Failed to open config file");
-    file.write_all(pubkey.as_bytes()).expect("Failed to write pubkey");
+    file.write_all(pubkey.as_bytes())
+        .expect("Failed to write pubkey");
 }
 
 pub fn get_last_pubkey() -> Option<String> {
